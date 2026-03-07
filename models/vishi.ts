@@ -14,7 +14,7 @@ export interface PaginatedVishis<T = VishiAdmin | VishiPublic> {
   results:  T[]
 }
 
-// ─── Nested user snapshot (admin serializer only) ─────────────────────────────
+// ─── Nested user snapshot ─────────────────────────────────────────────────────
 
 export interface UserDetail {
   id:            number
@@ -24,61 +24,62 @@ export interface UserDetail {
 
 // ─── Participants ─────────────────────────────────────────────────────────────
 
-/** Admin: GET /api/vishis/{id}/participants/ — full fields */
 export interface VishiParticipantAdmin {
-  id:          number
-  vishi:       number
-  user:        number       // FK id
-  user_detail: UserDetail   // nested read-only
-  vishi_name:  string
-  is_active:   boolean
-  is_drawn:    boolean
-  joined_at:   string
+  id:            number
+  vishi:         number
+  user:          number
+  user_detail:   UserDetail
+  vishi_name:    string
+  is_active:     boolean
+  is_drawn:      boolean
+  joined_at:     string
+  ledger_balance: string | null   // ← ADDED: "-4000.00" | "0.00"
+  ledger_status:  LedgerStatus | null  // ← ADDED: for participant card badge
 }
 
-/** User: GET /api/vishis/{id}/participants/ — limited public fields */
 export interface VishiParticipantPublic {
   id:           number
   vishi_name:   string
-  username:     string       // source: user.username
+  username:     string
   is_drawn:     boolean
   is_active:    boolean
-  drawn_at:     string | null   // from VishiDrawRecord
-  cycle_number: number | null   // from VishiDrawRecord
+  drawn_at:     string | null
+  cycle_number: number | null
 }
 
 // ─── Draw records ─────────────────────────────────────────────────────────────
 
-/** Admin: fields = '__all__' */
 export interface DrawRecord {
-  id:              number
-  vishi:           number
-  participant:     number
+  id:               number
+  vishi:            number
+  participant:      number
+  cycle_number:     number
+  was_fixed:        boolean
+  drawn_at:         string
+  is_released:      boolean
+  released_at:      string | null
+  released_amount:  string | null
+  participant_name: string   // ← ADDED: "Raj-Shop"
+  username:         string   // ← ADDED: "Raj Shah"
+}
+
+export interface DrawRecordPublic {
   cycle_number:    number
+  vishi_name:      string
+  username:        string
   was_fixed:       boolean
   drawn_at:        string
   is_released:     boolean
   released_at:     string | null
-  released_amount: string | null   // decimal string e.g. "25000.00"
+  released_amount: string | null  // ← ADDED: visible in public serializer too
 }
 
-/** User: limited public serializer — NO released_amount */
-export interface DrawRecordPublic {
-  cycle_number: number
-  vishi_name:   string
-  username:     string
-  was_fixed:    boolean
-  drawn_at:     string
-  is_released:  boolean
-  released_at:  string | null
-}
-
-// ─── Vishi (shared base) ──────────────────────────────────────────────────────
+// ─── Vishi Base ───────────────────────────────────────────────────────────────
 
 interface VishiBase {
   id:                      number
   name:                    string
-  amount:                  string   // "5000.00"
+  amount:                  string
   frequency:               VishiFrequency
   current_draw_date:       string
   current_collection_date: string
@@ -90,24 +91,25 @@ interface VishiBase {
   total_cycles:            number
 }
 
-/** Regular user response — VishiPublicSerializer */
 export interface VishiPublic extends VishiBase {
   participants: VishiParticipantPublic[]
   draw_records: DrawRecordPublic[]
 }
 
-/** Superuser response — VishiSerializer (fields = '__all__') */
 export interface VishiAdmin extends VishiBase {
-  draw_day:             number
-  collection_day:       number
-  release_day:          number
-  missed_cycles:        number
-  fix_draw_participant: number | null  // FK id or null
-  created_by:           number
-  created_at:           string
-  updated_at:           string
-  participants:         VishiParticipantAdmin[]
-  draw_records:         DrawRecord[]
+  draw_day:               number
+  collection_day:         number
+  release_day:            number
+  missed_cycles:          number
+  fix_draw_participant:   number | null
+  is_deleted:             boolean         // ← ADDED
+  deleted_at:             string | null   // ← ADDED
+  pending_payments_count: number          // ← ADDED: for dashboard badge
+  created_by:             number
+  created_at:             string
+  updated_at:             string
+  participants:           VishiParticipantAdmin[]
+  draw_records:           DrawRecord[]
 }
 
 // ─── Payloads ─────────────────────────────────────────────────────────────────
@@ -122,10 +124,15 @@ export interface CreateVishiPayload {
   start_date:     string
 }
 
-/** Only name and amount are writable after creation */
+// Active vishi: only name. Upcoming: all fields.
 export interface UpdateVishiPayload {
-  name?:   string
-  amount?: string
+  name?:          string
+  amount?:        string
+  frequency?:     VishiFrequency
+  draw_day?:      number
+  collection_day?: number
+  release_day?:   number
+  start_date?:    string
 }
 
 export interface CreateParticipantPayload {
@@ -138,12 +145,31 @@ export interface UpdateParticipantPayload {
   vishi_name?: string
 }
 
-/** POST /api/vishis/{id}/skip_cycle/ */
-export interface SkipCyclePayload {
-  reason?: string   // optional audit note
+export interface DrawPayload {
+  fix_participant_id?: number   // optional — omit for random draw
 }
 
-/** POST /api/vishis/{id}/set_fix_draw/ */
+export interface SkipCyclePayload {
+  reason?: string
+}
+
 export interface SetFixDrawPayload {
-  participant_id: number
+  participant_id?: number   // omit or null to CLEAR the fix draw
+}
+
+// ─── Query Params ─────────────────────────────────────────────────────────────
+
+export interface VishisQueryParams {
+  status?:     VishiStatus
+  frequency?:  VishiFrequency
+  is_deleted?: boolean
+  search?:     string
+  ordering?:   string
+  page?:       number
+}
+
+export interface ParticipantsQueryParams {
+  is_active?: boolean
+  is_drawn?:  boolean
+  search?:    string
 }

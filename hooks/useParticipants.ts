@@ -2,19 +2,29 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { participantService } from '@/services/participantService'
-import { VISHI_KEYS } from './useVishis'
+// ← FIXED: participantService deleted — import from vishiService directly
+import { vishiService } from '@/services/vishiService'
+import { VISHI_KEYS } from '@/hooks/useVishis'
+import type {
+  CreateParticipantPayload,
+  UpdateParticipantPayload,
+  ParticipantsQueryParams,
+} from '@/models/vishi'
 
 
 export const PARTICIPANT_KEYS = {
-  list: (vishiId: number) => ['participants', vishiId] as const,
+  list:   (vishiId: number, params?: object) =>
+    ['participants', vishiId, params ?? {}] as const,
+  detail: (vishiId: number, id: number) =>
+    ['participants', vishiId, id] as const,
 }
 
 
-export function useParticipants(vishiId: number, params?: { search?: string; ordering?: string }) {
+export function useParticipants(vishiId: number, params?: ParticipantsQueryParams) {
   return useQuery({
-    queryKey: PARTICIPANT_KEYS.list(vishiId),
-    queryFn:  () => participantService.list(vishiId, params).then((r) => r.data),
+    queryKey: PARTICIPANT_KEYS.list(vishiId, params),
+    // ← FIXED: was participantService.list → vishiService.listParticipants
+    queryFn:  () => vishiService.listParticipants(vishiId, params).then((r) => r.data),
     enabled:  !!vishiId,
   })
 }
@@ -23,11 +33,12 @@ export function useParticipants(vishiId: number, params?: { search?: string; ord
 export function useAddParticipant(vishiId: number) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { user: number; vishi_name?: string }) =>
-      participantService.create(vishiId, data),
+    mutationFn: (data: CreateParticipantPayload) =>
+      // ← FIXED: was participantService.create → vishiService.addParticipant
+      vishiService.addParticipant(vishiId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: PARTICIPANT_KEYS.list(vishiId) })
-      // total_cycles + finish_date on vishi changes when participant added
+      // total_cycles + finish_date on vishi change when participant is added
       qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(vishiId) })
       toast.success('Participant added.')
     },
@@ -40,14 +51,14 @@ export function useAddParticipant(vishiId: number) {
 export function useUpdateParticipant(vishiId: number, participantId: number) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { user?: number; vishi_name?: string }) =>
-      participantService.update(vishiId, participantId, data),
+    mutationFn: (data: UpdateParticipantPayload) =>
+      // ← FIXED: was participantService.update → vishiService.updateParticipant
+      vishiService.updateParticipant(vishiId, participantId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: PARTICIPANT_KEYS.list(vishiId) })
       qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(vishiId) })
       toast.success('Participant updated.')
     },
-    // FIXED: was missing onError
     onError: (err: any) =>
       toast.error(err?.response?.data?.detail ?? 'Failed to update participant.'),
   })
@@ -58,14 +69,14 @@ export function useRemoveParticipant(vishiId: number) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (participantId: number) =>
-      participantService.remove(vishiId, participantId),
+      // ← FIXED: was participantService.remove → vishiService.removeParticipant
+      vishiService.removeParticipant(vishiId, participantId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: PARTICIPANT_KEYS.list(vishiId) })
-      // total_cycles + finish_date on vishi changes when participant removed
+      // total_cycles + finish_date change on non-drawn participant removal
       qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(vishiId) })
       toast.success('Participant removed.')
     },
-    // FIXED: was missing onError
     onError: (err: any) =>
       toast.error(err?.response?.data?.detail ?? 'Failed to remove participant.'),
   })

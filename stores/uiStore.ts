@@ -2,12 +2,13 @@
 
 import { create } from 'zustand'
 
+
 interface UIState {
-  sidebarOpen:     boolean
-  hydrated:        boolean
-  toggleSidebar:   () => void
-  setSidebarOpen:  (val: boolean) => void
-  setHydrated:     (val: boolean) => void
+  sidebarOpen:    boolean
+  hydrated:       boolean
+  toggleSidebar:  () => void
+  setSidebarOpen: (val: boolean) => void
+  setHydrated:    (val: boolean) => void
 }
 
 const useUIStore = create<UIState>()((set) => ({
