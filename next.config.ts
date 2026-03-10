@@ -1,5 +1,3 @@
-// next.config.ts
-
 import type { NextConfig } from 'next'
 import withSerwistInit from '@serwist/next'
 
@@ -10,8 +8,9 @@ const withSerwist = withSerwistInit({
 })
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  turbopack: {},
+  output:            'standalone',   // ✅ REQUIRED for Docker multi-stage build
+  reactStrictMode:   true,
+  turbopack:         {},
   transpilePackages: ['@tanstack/react-query'],
 }
 

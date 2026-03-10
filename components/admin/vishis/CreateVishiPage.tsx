@@ -1,43 +1,44 @@
+// components/admin/vishis/CreateVishiPage.tsx
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState }       from 'react'
+import { useRouter }      from 'next/navigation'
 import { useCreateVishi } from '@/hooks/useVishis'
-import { useUsers } from '@/hooks/useUsers'
-import { participantService } from '@/services/participantService'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { useUsers }       from '@/hooks/useUsers'
+// FIXED: participantService is deleted — import vishiService directly
+import { vishiService }   from '@/services/vishiService'
+import { Button }         from '@/components/ui/button'
+import { Input }          from '@/components/ui/input'
+import { Label }          from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Badge }          from '@/components/ui/badge'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, Plus, X, Loader2, Users } from 'lucide-react'
-import { toast } from 'sonner'
-import AdminRoute from '@/components/shared/AdminRoute'
+import { Plus, X, Loader2, Users, AlertTriangle } from 'lucide-react'
+import { toast }      from 'sonner'
+import AdminRoute     from '@/components/shared/AdminRoute'
+import PageHeader     from '@/components/shared/PageHeader'
 import type { VishiFrequency } from '@/models/vishi'
-
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ParticipantSlot {
   user_id:      number
-  display_name: string   // username || mobile_number for UI only
-  vishi_name:   string   // slot alias — sent to backend
+  display_name: string
+  vishi_name:   string
 }
-
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CreateVishiPage() {
   const router = useRouter()
   const { mutateAsync: createVishi, isPending: creatingVishi } = useCreateVishi()
-  const { data: usersData } = useUsers({ ordering: 'username' })
-  const users = (usersData?.results ?? []).filter((u) => u.is_active)
 
-  // Vishi fields
+  const { data: usersData, isLoading: loadingUsers } = useUsers({
+    ordering:  'username',
+    is_active: true,
+    page_size: 500,
+  })
+  const users = usersData?.results ?? []
+
   const [name,          setName]          = useState('')
   const [amount,        setAmount]        = useState('')
   const [frequency,     setFrequency]     = useState<VishiFrequency>('monthly')
@@ -46,7 +47,6 @@ export default function CreateVishiPage() {
   const [releaseDay,    setReleaseDay]    = useState('')
   const [startDate,     setStartDate]     = useState('')
 
-  // Participant slots
   const [slots,        setSlots]        = useState<ParticipantSlot[]>([])
   const [selectedUser, setSelectedUser] = useState('')
   const [slotName,     setSlotName]     = useState('')
@@ -54,7 +54,19 @@ export default function CreateVishiPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isPending = creatingVishi || isSubmitting
 
-  // ── Slot management ──────────────────────────────────────────────────────────
+  // ── Day-order validation ──────────────────────────────────────────────────
+
+  const dayError: string | null = (() => {
+    const d = Number(drawDay)
+    const c = Number(collectionDay)
+    const r = Number(releaseDay)
+    if (!drawDay || !collectionDay || !releaseDay) return null
+    if (d >= c) return 'Draw day must be before Collection day.'
+    if (c >= r) return 'Collection day must be before Release day.'
+    return null
+  })()
+
+  // ── Slot management ───────────────────────────────────────────────────────
 
   const addSlot = () => {
     const user = users.find((u) => String(u.id) === selectedUser)
@@ -74,22 +86,30 @@ export default function CreateVishiPage() {
   const removeSlot = (index: number) =>
     setSlots((prev) => prev.filter((_, i) => i !== index))
 
-  // How many slots does this user already have?
   const slotCount = (userId: number) =>
     slots.filter((s) => s.user_id === userId).length
 
-  // ── Submit ───────────────────────────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────────────────
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!name.trim() || !amount || !drawDay || !collectionDay || !releaseDay || !startDate) {
       toast.error('Please fill all required fields.')
+      return
+    }
+    if (Number(amount) <= 0) {
+      toast.error('Amount must be greater than 0.')
+      return
+    }
+    if (dayError) {
+      toast.error(dayError)
       return
     }
 
     setIsSubmitting(true)
     try {
-      // 1. Create vishi
+      // 1. Create the vishi
       const res = await createVishi({
         name:           name.trim(),
         amount:         amount.trim(),
@@ -101,44 +121,49 @@ export default function CreateVishiPage() {
       })
       const newVishiId = res.data.id
 
-      // 2. Add participants sequentially (order matters — determines draw order)
+      // 2. Add participants sequentially via vishiService.addParticipant
+      //    (participantService was deleted — all participant ops live in vishiService)
+      let failCount = 0
       for (const slot of slots) {
-        await participantService.create(newVishiId, {
-          user:       slot.user_id,
-          vishi_name: slot.vishi_name || undefined,
-        })
+        try {
+          await vishiService.addParticipant(newVishiId, {
+            user:       slot.user_id,
+            vishi_name: slot.vishi_name || undefined,
+          })
+        } catch {
+          failCount++
+        }
       }
 
-      toast.success(
-        slots.length > 0
-          ? `Vishi created with ${slots.length} participant${slots.length !== 1 ? 's' : ''}.`
-          : 'Vishi created. Add participants from the detail page.'
-      )
+      if (failCount > 0) {
+        toast.warning(
+          `Vishi created but ${failCount} participant${failCount !== 1 ? 's' : ''} failed to add. Add them manually from the detail page.`
+        )
+      } else {
+        toast.success(
+          slots.length > 0
+            ? `Vishi created with ${slots.length} participant${slots.length !== 1 ? 's' : ''}.`
+            : 'Vishi created. Add participants from the detail page.'
+        )
+      }
       router.push(`/admin/vishis/${newVishiId}`)
     } catch {
-      // Individual errors handled by axios interceptor + service toast
+      // createVishi failure handled by interceptor
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <AdminRoute>
-      <div className="space-y-5 max-w-lg mx-auto">
-
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h2 className="text-xl font-bold">Create Vishi</h2>
-        </div>
+      <div className="space-y-5">
+        <PageHeader back title="Create Vishi" />
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* ── Basic details ───────────────────────────────────────────────── */}
+          {/* Basic details */}
           <Card className="rounded-xl">
             <CardHeader className="pb-2 pt-4 px-4">
               <CardTitle className="text-sm">Basic Details</CardTitle>
@@ -193,36 +218,31 @@ export default function CreateVishiPage() {
             </CardContent>
           </Card>
 
-          {/* ── Day settings ────────────────────────────────────────────────── */}
+          {/* Day settings */}
           <Card className="rounded-xl">
             <CardHeader className="pb-1 pt-4 px-4">
               <CardTitle className="text-sm">Day Settings</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-3">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Draw day &lt; Collection day &lt; Release day.
-                For monthly / half-yearly / yearly use day-of-month (1–28).
-                For weekly / half-monthly use offset from cycle start.
+                Draw &lt; Collection &lt; Release. Monthly/Half-yearly/Yearly: day-of-month (1–28).
+                Weekly/Half-monthly: offset from cycle start.
               </p>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label>Draw *</Label>
                   <Input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="15"
-                    min={1} max={28}
+                    type="number" inputMode="numeric"
+                    placeholder="15" min={1} max={28}
                     value={drawDay}
                     onChange={(e) => setDrawDay(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Collection *</Label>
+                  <Label>Collect *</Label>
                   <Input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="20"
-                    min={1} max={28}
+                    type="number" inputMode="numeric"
+                    placeholder="20" min={1} max={28}
                     value={collectionDay}
                     onChange={(e) => setCollectionDay(e.target.value)}
                   />
@@ -230,19 +250,23 @@ export default function CreateVishiPage() {
                 <div className="space-y-1.5">
                   <Label>Release *</Label>
                   <Input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="22"
-                    min={1} max={28}
+                    type="number" inputMode="numeric"
+                    placeholder="22" min={1} max={28}
                     value={releaseDay}
                     onChange={(e) => setReleaseDay(e.target.value)}
                   />
                 </div>
               </div>
+              {dayError && (
+                <div className="flex items-center gap-2 text-xs text-destructive">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  {dayError}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* ── Participants ─────────────────────────────────────────────────── */}
+          {/* Participants */}
           <Card className="rounded-xl">
             <CardHeader className="pb-2 pt-4 px-4">
               <div className="flex items-center justify-between">
@@ -255,8 +279,6 @@ export default function CreateVishiPage() {
               </div>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-3">
-
-              {/* Slot list */}
               {slots.length > 0 && (
                 <div className="space-y-1.5">
                   {slots.map((slot, i) => (
@@ -266,10 +288,7 @@ export default function CreateVishiPage() {
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium truncate">
-                            {slot.display_name}
-                          </p>
-                          {/* Show how many slots this user already has */}
+                          <p className="text-sm font-medium truncate">{slot.display_name}</p>
                           {slotCount(slot.user_id) > 1 && (
                             <Badge
                               variant="outline"
@@ -279,20 +298,13 @@ export default function CreateVishiPage() {
                             </Badge>
                           )}
                         </div>
-                        {slot.vishi_name ? (
-                          <p className="text-xs text-muted-foreground">
-                            Alias: {slot.vishi_name}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground/50 italic">
-                            No alias
-                          </p>
-                        )}
+                        {slot.vishi_name
+                          ? <p className="text-xs text-muted-foreground">Alias: {slot.vishi_name}</p>
+                          : <p className="text-xs text-muted-foreground/50 italic">No alias</p>
+                        }
                       </div>
                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
+                        type="button" variant="ghost" size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
                         onClick={() => removeSlot(i)}
                       >
@@ -303,14 +315,12 @@ export default function CreateVishiPage() {
                 </div>
               )}
 
-              {/* Add slot controls */}
               <div className="rounded-lg border p-3 space-y-2.5 bg-muted/30">
                 <p className="text-xs text-muted-foreground font-medium">Add a slot</p>
 
-                {/* User select — shows name + mobile so they're distinguishable */}
                 <Select value={selectedUser} onValueChange={setSelectedUser}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select user..." />
+                    <SelectValue placeholder={loadingUsers ? 'Loading users...' : 'Select user...'} />
                   </SelectTrigger>
                   <SelectContent>
                     {users.length === 0 ? (
@@ -323,9 +333,7 @@ export default function CreateVishiPage() {
                           <div className="flex flex-col">
                             <span>{u.username || u.mobile_number}</span>
                             {u.username && (
-                              <span className="text-xs text-muted-foreground">
-                                {u.mobile_number}
-                              </span>
+                              <span className="text-xs text-muted-foreground">{u.mobile_number}</span>
                             )}
                           </div>
                         </SelectItem>
@@ -334,25 +342,20 @@ export default function CreateVishiPage() {
                   </SelectContent>
                 </Select>
 
-                {/* Slot alias */}
                 <div className="space-y-1">
                   <Input
-                    placeholder="Slot alias, e.g. Raj-Home, Raj-Shop (optional)"
+                    placeholder="Slot alias e.g. Raj-Home, Raj-Shop (optional)"
                     value={slotName}
                     onChange={(e) => setSlotName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') { e.preventDefault(); addSlot() }
-                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSlot() } }}
                   />
                   <p className="text-xs text-muted-foreground pl-1">
-                    Same user can have multiple slots with different aliases.
+                    Same user can hold multiple slots with different aliases.
                   </p>
                 </div>
 
                 <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                  type="button" variant="outline" size="sm"
                   className="w-full"
                   onClick={addSlot}
                   disabled={!selectedUser}
@@ -363,8 +366,12 @@ export default function CreateVishiPage() {
             </CardContent>
           </Card>
 
-          {/* Submit */}
-          <Button type="submit" className="w-full" size="lg" disabled={isPending}>
+          <Button
+            type="submit"
+            className="w-full"
+            size="lg"
+            disabled={isPending || !!dayError}
+          >
             {isPending
               ? <Loader2 className="h-4 w-4 animate-spin" />
               : slots.length > 0
@@ -372,7 +379,6 @@ export default function CreateVishiPage() {
                 : 'Create Vishi'
             }
           </Button>
-
         </form>
       </div>
     </AdminRoute>

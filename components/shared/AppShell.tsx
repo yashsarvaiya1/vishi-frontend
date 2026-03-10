@@ -3,8 +3,8 @@
 
 import HydrationGuard from './HydrationGuard'
 import ProtectedRoute from './ProtectedRoute'
-import Header from './Header'
-import Sidebar from './Sidebar'
+import Header         from './Header'
+import BottomNav      from './BottomNav'
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -12,13 +12,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <ProtectedRoute>
         <div className="min-h-screen flex flex-col bg-background">
           <Header />
-          <Sidebar />
-          {/* Sidebar is fixed/overlay — no ml-64 needed */}
-          <main className="flex-1 overflow-y-auto pb-10 px-4 pt-5 md:px-6">
-            <div className="max-w-5xl mx-auto w-full">
+          {/*
+           * pb-20 = 80px clearance for the 64px bottom nav + safe area buffer.
+           * max-w-lg keeps content readable on tablets too.
+           */}
+          <main className="flex-1 overflow-y-auto pt-5 pb-20 px-4">
+            <div className="max-w-lg mx-auto w-full">
               {children}
             </div>
           </main>
+          <BottomNav />
         </div>
       </ProtectedRoute>
     </HydrationGuard>

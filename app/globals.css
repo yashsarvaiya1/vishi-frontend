@@ -124,3 +124,30 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Confetti particle falling + fading */
+  @keyframes confetti-fall {
+    0%   { transform: translateY(-10px) rotate(0deg);   opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+  .animate-confetti-fall {
+    animation-name:            confetti-fall;
+    animation-timing-function: ease-in;
+    animation-fill-mode:       forwards;
+    /* FIXED: use per-particle --dur set inline in DrawAnimation.tsx, fallback 1.2s */
+    animation-duration:        var(--dur, 1.2s);
+  }
+
+  /* Slot machine drum-roll flicker */
+  @keyframes slot-spin {
+    0%,100% { transform: translateY(0);    opacity: 1;   }
+    25%     { transform: translateY(-8px); opacity: 0.4; }
+    50%     { transform: translateY(0px);  opacity: 1;   }
+    75%     { transform: translateY(8px);  opacity: 0.4; }
+  }
+  .animate-slot-spin {
+    animation: slot-spin 180ms linear infinite;
+  }
+}

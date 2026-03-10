@@ -14,8 +14,9 @@ export interface User {
   additional_contacts: AdditionalContact[]
   is_active:           boolean
   is_superuser:        boolean
-  date_joined:         string        // ISO datetime
+  date_joined:         string
   last_login:          string | null
+  password_set:        boolean
 }
 
 // ─── Paginated ────────────────────────────────────────────────────────────────
@@ -36,7 +37,7 @@ export interface CreateUserPayload {
   additional_contacts?: AdditionalContact[]
 }
 
-// PATCH /api/users/{id}/ — admin only
+// PATCH /api/users/{id}/ — superuser only
 export interface UpdateUserPayload {
   username?:            string
   address?:             string
@@ -44,10 +45,19 @@ export interface UpdateUserPayload {
   additional_contacts?: AdditionalContact[]
 }
 
-// PATCH /api/profile/me-update/ — superuser only
-// allowed: username, address, additional_contacts
+// PATCH /api/profile/me/update/ — all users
 export interface UpdateProfilePayload {
   username?:            string
   address?:             string
   additional_contacts?: AdditionalContact[]
+}
+
+// ─── Query Params ─────────────────────────────────────────────────────────────
+
+export interface UsersQueryParams {
+  search?:    string
+  is_active?: boolean
+  ordering?:  'date_joined' | '-date_joined' | 'username' | 'mobile_number'
+  page?:      number
+  page_size?: number   // passed as ?page_size=500 to fetch all active users in one call
 }

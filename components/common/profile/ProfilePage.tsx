@@ -1,30 +1,34 @@
 // components/common/profile/ProfilePage.tsx
 'use client'
 
-import { useState } from 'react'
-import { useGetMe, useClearMyPassword } from '@/hooks/useAuth'
-import { formatDate, getInitials } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { useState }                       from 'react'
+import { useRouter }                      from 'next/navigation'
+import { useGetMe, useClearMyPassword }   from '@/hooks/useAuth'
+import { formatDate, getInitials }        from '@/lib/utils'
+import { Button }                         from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import ConfirmDialog from '@/components/shared/ConfirmDialog'
-import LoadingSpinner from '@/components/shared/LoadingSpinner'
-import { VishiStatusBadge } from '@/components/shared/StatusBadge'
-import { LogOut, ShieldCheck, KeyRound, Phone, MapPin, Calendar, User } from 'lucide-react'
+import { Separator }                      from '@/components/ui/separator'
+import { Avatar, AvatarFallback }         from '@/components/ui/avatar'
+import { Badge }                          from '@/components/ui/badge'
+import ConfirmDialog                      from '@/components/shared/ConfirmDialog'
+import LoadingSpinner                     from '@/components/shared/LoadingSpinner'
+import PageHeader                         from '@/components/shared/PageHeader'
+import {
+  LogOut, ShieldCheck, KeyRound,
+  Phone, MapPin, Calendar, User, Pencil,
+  Wallet, IndianRupee, ChevronRight,
+} from 'lucide-react'
 import useAuthStore from '@/stores/authStore'
-import { useRouter } from 'next/navigation'
-
 
 export default function ProfilePage() {
-  const router      = useRouter()
-  const clearAuth   = useAuthStore((s) => s.clearAuth)
-  const clearMyPass = useClearMyPassword()
+  const router        = useRouter()
+  const clearAuth     = useAuthStore((s) => s.clearAuth)
+  const is_superuser  = useAuthStore((s) => s.is_superuser)
+  const clearMyPass   = useClearMyPassword()
+
   const [showLogout,    setShowLogout]    = useState(false)
   const [showResetPass, setShowResetPass] = useState(false)
 
-  // FIXED: use hook — shares cache with AUTH_KEYS.me
   const { data: user, isLoading } = useGetMe()
 
   const handleLogout = () => {
@@ -32,9 +36,7 @@ export default function ProfilePage() {
     router.replace('/login')
   }
 
-  if (isLoading) {
-    return <LoadingSpinner fullPage label="Loading profile..." />
-  }
+  if (isLoading) return <LoadingSpinner fullPage label="Loading profile..." />
 
   if (!user) {
     return (
@@ -45,8 +47,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-5 max-w-lg mx-auto">
-      <h2 className="text-xl font-bold">Profile</h2>
+    <div className="space-y-5">
+      <PageHeader title="Profile" />
 
       {/* Avatar + name card */}
       <Card className="rounded-xl">
@@ -95,14 +97,14 @@ export default function ProfilePage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-5 pb-5 space-y-3">
-          <InfoRow icon={Phone} label="Mobile" value={user.mobile_number} />
-          <InfoRow icon={User} label="Username" value={user.username || '—'} />
-          <InfoRow icon={MapPin} label="Address" value={user.address || '—'} />
+          <InfoRow icon={Phone}    label="Mobile"       value={user.mobile_number} />
+          <InfoRow icon={User}     label="Username"     value={user.username || '—'} />
+          <InfoRow icon={MapPin}   label="Address"      value={user.address || '—'} />
           <InfoRow icon={Calendar} label="Member since" value={formatDate(user.date_joined)} />
           <InfoRow
             icon={Calendar}
             label="Last login"
-            value={formatDate(user.last_login)}
+            value={user.last_login ? formatDate(user.last_login) : 'Never'}
           />
         </CardContent>
       </Card>
@@ -129,10 +131,40 @@ export default function ProfilePage() {
         </Card>
       )}
 
+      {/*
+       * Flow §8 + §2 — Admin "MY ACCOUNT" group.
+       * Admin sees the same own-participation screens as regular users.
+       * Quick links surfaced here so admin can reach them without the header dropdown.
+       */}
+      {is_superuser && (
+        <Card className="rounded-xl">
+          <CardHeader className="pb-2 pt-4 px-5">
+            <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide font-semibold">
+              My Account
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-4 space-y-1">
+            <NavLink
+              icon={Wallet}
+              label="My Vishis"
+              description="Your own participation slots"
+              onClick={() => router.push('/common/my-vishis')}
+            />
+            <Separator />
+            <NavLink
+              icon={IndianRupee}
+              label="My Payments"
+              description="Your payment history grouped by vishi"
+              onClick={() => router.push('/common/my-payments')}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Actions */}
       <Card className="rounded-xl">
         <CardContent className="px-5 py-4 space-y-2.5">
-          {/* FIXED: Reset password available for ALL users, not just superusers */}
+          {/* Flow §8 — Reset My Password: clears own password, redirects to set-password */}
           <Button
             variant="outline"
             size="sm"
@@ -155,7 +187,7 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* FIXED: use ConfirmDialog shared component */}
+      {/* Logout confirm */}
       <ConfirmDialog
         open={showLogout}
         onOpenChange={setShowLogout}
@@ -166,24 +198,28 @@ export default function ProfilePage() {
         onConfirm={handleLogout}
       />
 
+      {/* Reset password confirm — clears password then logs out */}
       <ConfirmDialog
         open={showResetPass}
         onOpenChange={setShowResetPass}
         title="Reset Your Password?"
-        description="Your password will be cleared. You'll be redirected to set a new one on next login."
+        description="Your password will be cleared. You'll need to set a new one on next login."
         confirmLabel="Reset Password"
         variant="destructive"
         loading={clearMyPass.isPending}
         onConfirm={() =>
           clearMyPass.mutate(undefined, {
-            onSuccess: () => setShowResetPass(false),
+            onSuccess: () => {
+              setShowResetPass(false)
+              clearAuth()
+              router.replace('/login')
+            },
           })
         }
       />
     </div>
   )
 }
-
 
 function InfoRow({
   icon: Icon, label, value,
@@ -192,7 +228,31 @@ function InfoRow({
     <div className="flex items-start gap-3 text-sm">
       <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
       <span className="text-muted-foreground w-24 shrink-0">{label}</span>
-      <span className="font-medium text-right flex-1 break-all">{value}</span>
+      <span className="font-medium flex-1 break-all">{value}</span>
     </div>
+  )
+}
+
+function NavLink({
+  icon: Icon, label, description, onClick,
+}: {
+  icon: React.ElementType
+  label: string
+  description: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 py-2.5 text-left hover:opacity-75 transition-opacity"
+    >
+      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+    </button>
   )
 }

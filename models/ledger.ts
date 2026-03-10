@@ -6,11 +6,11 @@ import type { EntryType, LedgerStatus } from './vishi'
 export interface PaymentEntry {
   id:           number
   ledger:       number
-  amount:       string        // negative = charge debit, positive = payment credit
+  amount:       string        // negative = charge, positive = payment credit
   entry_type:   EntryType
   cycle_number: number
   note:         string
-  recorded_by:  number | null  // null = cron-generated charge
+  recorded_by:  number | null
   created_at:   string
 }
 
@@ -23,22 +23,19 @@ export interface PaginatedEntries {
 
 // ─── Ledger ───────────────────────────────────────────────────────────────────
 
-/**
- * CollectionLedger — one per active participant per vishi.
- * `entries` are EMBEDDED in the retrieve response.
- * On list (/ledgers/) entries may be present per CollectionLedgerSerializer.
- */
 export interface CollectionLedger {
-  id:              number
-  vishi:           number
-  participant:     number
-  balance:         string       // "0.00" | "-5000.00" | "1000.00"
-  status:          LedgerStatus
-  is_active:       boolean
-  last_charged_at: string | null
-  last_paid_at:    string | null
-  updated_at:      string
-  entries:         PaymentEntry[]  // embedded via serializer
+  id:               number
+  vishi:            number
+  participant:      number
+  balance:          string
+  status:           LedgerStatus
+  is_active:        boolean
+  last_charged_at:  string | null
+  last_paid_at:     string | null
+  updated_at:       string
+  participant_name: string   // ← ADDED: "Raj-Home"
+  mobile_number:    string   // ← ADDED: "9876543210"
+  entries:          PaymentEntry[]
 }
 
 export interface PaginatedLedgers {
@@ -48,9 +45,21 @@ export interface PaginatedLedgers {
   results:  CollectionLedger[]
 }
 
-// ─── Payload ──────────────────────────────────────────────────────────────────
+// ─── Payloads ─────────────────────────────────────────────────────────────────
 
 export interface RecordPaymentPayload {
-  amount: number
+  amount: number | string
   note?:  string
+}
+
+// ─── Query Params ─────────────────────────────────────────────────────────────
+
+export interface LedgersQueryParams {
+  status?:    LedgerStatus
+  is_active?: boolean
+}
+
+export interface EntriesQueryParams {
+  entry_type?:  EntryType
+  cycle_number?: number
 }

@@ -31,9 +31,13 @@ export interface AuthResponse {
   is_superuser: boolean
 }
 
-// POST /api/auth/login/ → two possible shapes:
-// 1. password not yet set   → { password_set: false }
-// 2. successful login       → { detail, username, is_superuser }
+
+// POST /api/auth/login/ → two possible shapes
 export type LoginResponse =
   | { password_set: false }
   | { detail: string; username: string | null; is_superuser: boolean }
+
+// Shared error shape for all auth endpoints
+export interface AuthErrorResponse {
+  detail: string
+}

@@ -1,18 +1,19 @@
+// components/admin/users/ManageUsersPage.tsx
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState }          from 'react'
+import { useRouter }         from 'next/navigation'
 import {
   useUsers, useCreateUser,
   useDeactivateUser, useActivateUser, useClearUserPassword,
 } from '@/hooks/useUsers'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { Button }            from '@/components/ui/button'
+import { Input }             from '@/components/ui/input'
+import { Label }             from '@/components/ui/label'
+import { Badge }             from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
+import { Skeleton }          from '@/components/ui/skeleton'
+import { Separator }         from '@/components/ui/separator'
 import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogFooter,
@@ -24,38 +25,60 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
-  Plus, Search, MoreVertical, Loader2, Users, ShieldCheck, X, UserPlus,
+  Plus, Search, MoreVertical, Loader2,
+  Users, ShieldCheck, X, UserPlus, KeyRound,
 } from 'lucide-react'
-import AdminRoute from '@/components/shared/AdminRoute'
-import PageHeader from '@/components/shared/PageHeader'
-import EmptyState from '@/components/shared/EmptyState'
+import AdminRoute    from '@/components/shared/AdminRoute'
+import PageHeader    from '@/components/shared/PageHeader'
+import EmptyState    from '@/components/shared/EmptyState'
 import ConfirmDialog from '@/components/shared/ConfirmDialog'
 import { getInitials, formatDate } from '@/lib/utils'
 import type { User, AdditionalContact } from '@/models/user'
 
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+type ActiveFilter = 'all' | 'active' | 'inactive'
+
 
 export default function ManageUsersPage() {
   const router = useRouter()
-  const [search,     setSearch]     = useState('')
-  const [showCreate, setShowCreate] = useState(false)
 
-  const { data, isLoading } = useUsers({ search })
-  const users    = data?.results ?? []
-  const nonAdmin = users.filter((u) => !u.is_superuser)
+  const [search,       setSearch]       = useState('')
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all')
+  const [showCreate,   setShowCreate]   = useState(false)
+
+  const { data, isLoading } = useUsers({
+    search,
+    ...(activeFilter !== 'all' ? { is_active: activeFilter === 'active' } : {}),
+  })
+
+  const users = data?.results ?? []
+
+  // FIXED: password_set is serializer-computed field — only count if API returns it
+  // If not available, remove the banner entirely. Guard with optional chaining.
+  const notSetup = users.filter((u) => u.password_set === false).length
 
   return (
     <AdminRoute>
       <div className="space-y-5">
         <PageHeader
           title="Manage Users"
-          subtitle={!isLoading ? `${users.length} total · ${nonAdmin.length} members` : undefined}
+          // FIXED: show API total count, not page-slice count
+          subtitle={!isLoading ? `${data?.count ?? 0} total` : undefined}
         >
           <Button size="sm" onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4 mr-1" /> Add User
           </Button>
         </PageHeader>
+
+        {/* Not-activated warning — only shown if backend exposes password_set */}
+        {notSetup > 0 && (
+          <div className="flex items-center gap-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 px-4 py-2.5 text-sm">
+            <KeyRound className="h-4 w-4 text-amber-600 shrink-0" />
+            <p className="text-amber-700 dark:text-amber-400">
+              <span className="font-semibold">{notSetup}</span> user{notSetup !== 1 ? 's' : ''} haven&apos;t set a password yet
+            </p>
+          </div>
+        )}
 
         {/* Search */}
         <div className="relative">
@@ -68,12 +91,25 @@ export default function ManageUsersPage() {
           />
         </div>
 
+        {/* Filter tabs */}
+        <div className="flex gap-2">
+          {(['all', 'active', 'inactive'] as ActiveFilter[]).map((f) => (
+            <Button
+              key={f}
+              size="sm"
+              variant={activeFilter === f ? 'default' : 'outline'}
+              className="h-8 text-xs capitalize"
+              onClick={() => setActiveFilter(f)}
+            >
+              {f}
+            </Button>
+          ))}
+        </div>
+
         {/* User list */}
         <div className="space-y-2.5">
           {isLoading ? (
-            [...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-20 rounded-xl" />
-            ))
+            [...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
           ) : users.length === 0 ? (
             <EmptyState
               icon={Users}
@@ -98,16 +134,13 @@ export default function ManageUsersPage() {
         </div>
       </div>
 
-      <CreateUserDialog
-        open={showCreate}
-        onClose={() => setShowCreate(false)}
-      />
+      <CreateUserDialog open={showCreate} onClose={() => setShowCreate(false)} />
     </AdminRoute>
   )
 }
 
 
-// ─── User card ────────────────────────────────────────────────────────────────
+// ─── User Card ────────────────────────────────────────────────────────────────
 
 function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
   const deactivate    = useDeactivateUser(user.id)
@@ -143,11 +176,18 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
                   <ShieldCheck className="h-2.5 w-2.5 mr-1" />Admin
                 </Badge>
               )}
+              {/* password_set is serializer-computed — guard with explicit false check */}
+              {user.password_set === false && (
+                <Badge
+                  variant="outline"
+                  className="text-xs px-1.5 py-0 h-4 text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400"
+                >
+                  <KeyRound className="h-2.5 w-2.5 mr-1" />No password
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">{user.mobile_number}</p>
-            <p className="text-xs text-muted-foreground">
-              Joined {formatDate(user.date_joined)}
-            </p>
+            <p className="text-xs text-muted-foreground">Joined {formatDate(user.date_joined)}</p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -162,6 +202,7 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
               {user.is_active ? 'Active' : 'Inactive'}
             </Badge>
 
+            {/* Only non-superusers get admin actions in list view */}
             {!user.is_superuser && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -170,6 +211,8 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
                     size="icon"
                     className="h-8 w-8"
                     disabled={anyPending}
+                    // Prevent card click propagation
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {anyPending
                       ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -179,7 +222,7 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuItem onClick={() => setConfirmClearPass(true)}>
-                    Clear Password
+                    <KeyRound className="h-3.5 w-3.5 mr-2" />Clear Password
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {user.is_active ? (
@@ -237,14 +280,12 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
 }
 
 
-// ─── Create user dialog ───────────────────────────────────────────────────────
+// ─── Create User Dialog ───────────────────────────────────────────────────────
 
 function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [mobile,    setMobile]    = useState('')
   const [username,  setUsername]  = useState('')
   const [address,   setAddress]   = useState('')
-
-  // Additional contacts
   const [contacts,  setContacts]  = useState<AdditionalContact[]>([])
   const [cName,     setCName]     = useState('')
   const [cNumber,   setCNumber]   = useState('')
@@ -273,17 +314,18 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
     setCRelation('')
   }
 
-  const removeContact = (index: number) =>
-    setContacts((prev) => prev.filter((_, i) => i !== index))
+  const removeContact = (i: number) =>
+    setContacts((prev) => prev.filter((_, idx) => idx !== i))
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (mobile.trim().length < 10) return
     mutate(
       {
-        mobile_number:        mobile.trim(),
-        username:             username.trim()  || undefined,
-        address:              address.trim()   || undefined,
-        additional_contacts:  contacts.length > 0 ? contacts : undefined,
+        mobile_number:       mobile.trim(),
+        username:            username.trim()  || undefined,
+        address:             address.trim()   || undefined,
+        additional_contacts: contacts.length > 0 ? contacts : undefined,
       },
       { onSuccess: () => { onClose(); reset() } }
     )
@@ -297,7 +339,6 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Core fields */}
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label>Mobile Number *</Label>
@@ -309,12 +350,15 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
                 value={mobile}
                 onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
                 autoFocus
+                maxLength={15}
               />
+              {mobile.length > 0 && mobile.length < 10 && (
+                <p className="text-xs text-destructive">Enter at least 10 digits.</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>
-                Name{' '}
-                <span className="text-muted-foreground font-normal">(optional)</span>
+                Name <span className="text-muted-foreground font-normal">(optional)</span>
               </Label>
               <Input
                 placeholder="Raj Shah"
@@ -324,8 +368,7 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
             </div>
             <div className="space-y-1.5">
               <Label>
-                Address{' '}
-                <span className="text-muted-foreground font-normal">(optional)</span>
+                Address <span className="text-muted-foreground font-normal">(optional)</span>
               </Label>
               <Input
                 placeholder="123 Main St, Ahmedabad"
@@ -344,7 +387,6 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
               <span className="text-xs text-muted-foreground">optional</span>
             </div>
 
-            {/* Added contacts */}
             {contacts.length > 0 && (
               <div className="space-y-1.5">
                 {contacts.map((c, i) => (
@@ -372,7 +414,6 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
               </div>
             )}
 
-            {/* Add contact row */}
             <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
               <div className="grid grid-cols-2 gap-2">
                 <Input
@@ -382,7 +423,7 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
                   className="text-sm h-8"
                 />
                 <Input
-                  placeholder="Relation (e.g. Father)"
+                  placeholder="Relation"
                   value={cRelation}
                   onChange={(e) => setCRelation(e.target.value)}
                   className="text-sm h-8"
@@ -396,6 +437,7 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
                   value={cNumber}
                   onChange={(e) => setCNumber(e.target.value.replace(/\D/g, ''))}
                   className="text-sm h-8 flex-1"
+                  maxLength={15}
                 />
                 <Button
                   type="button"
@@ -420,10 +462,7 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isPending || mobile.trim().length < 10}
-            >
+            <Button type="submit" disabled={isPending || mobile.trim().length < 10}>
               {isPending
                 ? <Loader2 className="h-4 w-4 animate-spin" />
                 : <><UserPlus className="h-4 w-4 mr-1.5" />Create</>

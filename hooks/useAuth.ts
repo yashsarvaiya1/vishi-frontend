@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { authService } from '@/services/authService'
 import useAuthStore from '@/stores/authStore'
 import type { CheckNumberRequest, LoginRequest, SetPasswordRequest } from '@/models/auth'
-import { UpdateProfilePayload } from '@/models/user'
+import type { UpdateProfilePayload } from '@/models/user'  // ← FIXED: added `type`
 
 
 export const AUTH_KEYS = {
@@ -101,44 +101,35 @@ export function useClearMyPassword() {
       toast.success('Password cleared. Please set a new one.')
       router.push('/login')
     },
-    // FIXED: was missing onError
     onError: (err: any) =>
       toast.error(err?.response?.data?.detail ?? 'Failed to clear password.'),
   })
 }
 
 
-// NEW: fetch logged-in user's own profile
 export function useGetMe() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   return useQuery({
-    queryKey: AUTH_KEYS.me,
-    queryFn:  () => authService.getMe().then((r) => r.data),
-    enabled:  isLoggedIn,
-    staleTime: 1000 * 60 * 5,  // 5 min — profile doesn't change often
+    queryKey:  AUTH_KEYS.me,
+    queryFn:   () => authService.getMe().then((r) => r.data),
+    enabled:   isLoggedIn,
+    staleTime: 1000 * 60 * 5,
   })
 }
 
 
-// NEW: update own profile (superuser only on backend — 403 for regular users)
 export function useUpdateMe() {
-  const qc      = useQueryClient()
-  const setAuth = useAuthStore((s) => s.setAuth)
-  const store   = useAuthStore()
+  const qc             = useQueryClient()
+  // ← FIXED: use updateUsername only — avoids having to re-supply password + mobile
+  const updateUsername = useAuthStore((s) => s.updateUsername)
 
   return useMutation({
-    mutationFn: (data: UpdateProfilePayload) =>   // FIXED: was inline type with unknown[]
-      authService.updateMe(data),
+    mutationFn: (data: UpdateProfilePayload) => authService.updateMe(data),
     onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: AUTH_KEYS.me })
-      if (res.data.username !== undefined && store.mobile_number && store.password) {
-        setAuth({
-          mobile_number: store.mobile_number,
-          password:      store.password,
-          username:      res.data.username,
-          is_superuser:  store.is_superuser,
-        })
-      }
+      // Update React Query cache
+      qc.setQueryData(AUTH_KEYS.me, res.data)
+      // Sync store username so the nav header reflects immediately
+      updateUsername(res.data.username ?? null)
       toast.success('Profile updated.')
     },
     onError: (err: any) =>
