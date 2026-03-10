@@ -1,5 +1,3 @@
-// hooks/useDashboard.ts
-
 import { useQuery }         from '@tanstack/react-query'
 import { useMemo }          from 'react'
 import { dashboardService } from '@/services/dashboardService'
@@ -7,7 +5,7 @@ import useAuthStore         from '@/stores/authStore'
 import type {
   AdminDashboard,
   MyVishiGroup,
-  MyPaymentVishiGroup,
+  MyPaymentVishiGroup,  // ✅ correct type name
   UserHomeDerived,
 } from '@/models/dashboard'
 
@@ -20,11 +18,9 @@ export const DASHBOARD_KEYS = {
 }
 
 
-// M1 — Superuser only: stat cards + action alerts + upcoming week events
 export function useAdminDashboard() {
   const isLoggedIn  = useAuthStore((s) => s.isLoggedIn)
   const isSuperuser = useAuthStore((s) => s.is_superuser)
-
   return useQuery({
     queryKey:  DASHBOARD_KEYS.root,
     queryFn:   () => dashboardService.getAdminDashboard().then((r) => r.data),
@@ -34,11 +30,9 @@ export function useAdminDashboard() {
 }
 
 
-// M3 — Superuser only: cross-vishi grouped dues overview (Collect Payments screen)
 export function usePaymentsSummary() {
   const isLoggedIn  = useAuthStore((s) => s.isLoggedIn)
   const isSuperuser = useAuthStore((s) => s.is_superuser)
-
   return useQuery({
     queryKey:  DASHBOARD_KEYS.paymentsSummary,
     queryFn:   () => dashboardService.getPaymentsSummary().then((r) => r.data),
@@ -48,11 +42,8 @@ export function usePaymentsSummary() {
 }
 
 
-// M5 — All users: own vishis with all slots grouped per vishi
-// Used by: My Vishis screen + useUserHomeDerived
 export function useMyVishis() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
-
   return useQuery({
     queryKey:  DASHBOARD_KEYS.myVishis,
     queryFn:   () => dashboardService.getMyVishis().then((r) => r.data),
@@ -62,11 +53,8 @@ export function useMyVishis() {
 }
 
 
-// M6 — All users: own payment history grouped by vishi
-// Used by: My Payments screen
 export function useMyPayments() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
-
   return useQuery({
     queryKey:  DASHBOARD_KEYS.myPayments,
     queryFn:   () => dashboardService.getMyPayments().then((r) => r.data),
@@ -76,7 +64,7 @@ export function useMyPayments() {
 }
 
 
-// User home screen stats are DERIVED from M5 data — no extra API call needed.
+// Derived from M5 — no extra API call
 export function useUserHomeDerived(): {
   data:      UserHomeDerived | undefined
   isLoading: boolean
@@ -85,7 +73,8 @@ export function useUserHomeDerived(): {
   const { data: myVishis, isLoading, isError } = useMyVishis()
 
   const derived = useMemo<UserHomeDerived | undefined>(() => {
-    if (!myVishis) return undefined
+    // FIXED: myVishis is a plain array from backend
+    if (!Array.isArray(myVishis)) return undefined
 
     const active_vishis_count = myVishis.filter((v) => v.status === 'active').length
 

@@ -1,4 +1,3 @@
-// components/common/my-payments/MyPaymentsPage.tsx
 'use client'
 
 import { useMemo, useState }  from 'react'
@@ -16,32 +15,30 @@ import { LedgerStatusBadge }  from '@/components/shared/StatusBadge'
 import EmptyState             from '@/components/shared/EmptyState'
 import LoadingSpinner         from '@/components/shared/LoadingSpinner'
 import PageHeader             from '@/components/shared/PageHeader'
-import type { MyVishiPaymentGroup, MyPaymentEntry } from '@/models/dashboard'
+// FIXED: correct types from models
+import type { MyPaymentVishiGroup, MyPaymentSlot } from '@/models/dashboard'
+import type { PaymentEntry }                       from '@/models/ledger'
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MyPaymentsPage() {
   const { data, isLoading, isError } = useMyPayments()
 
-  // Group the flat `groups` array by vishi_id on the frontend
-  const vishiGroups = useMemo(() => {
-    if (!data?.groups) return []
-    const map = new Map<number, { vishi_id: number; vishi_name: string; slots: MyVishiPaymentGroup[] }>()
-    for (const g of data.groups) {
-      if (!map.has(g.vishi_id)) {
-        map.set(g.vishi_id, { vishi_id: g.vishi_id, vishi_name: g.vishi_name, slots: [] })
-      }
-      map.get(g.vishi_id)!.slots.push(g)
-    }
-    return Array.from(map.values())
-  }, [data?.groups])
+  // FIXED: backend returns plain array — not { groups, total_pending_balance }
+  const vishiGroups: MyPaymentVishiGroup[] = Array.isArray(data) ? data : []
 
-  const pending = data ? parseFloat(data.total_pending_balance) : 0
-  const hasPending = pending < 0
+  // FIXED: derive total pending on frontend by summing negative total_balance
+  const pending = useMemo(() => {
+    return vishiGroups.reduce((sum, g) => {
+      const bal = parseFloat(g.total_balance)
+      return bal < 0 ? sum + Math.abs(bal) : sum
+    }, 0)
+  }, [vishiGroups])
+
+  const hasPending = pending > 0
 
   if (isLoading) return <LoadingSpinner fullPage label="Loading payments..." />
 
-  if (isError || !data) {
+  if (isError) {
     return (
       <EmptyState
         icon={AlertCircle}
@@ -74,7 +71,7 @@ export default function MyPaymentsPage() {
           </p>
           <p className={`text-xl font-bold ${hasPending ? 'text-red-600' : 'text-green-600'}`}>
             {hasPending
-              ? `₹${Math.abs(pending).toLocaleString('en-IN')}`
+              ? `₹${pending.toLocaleString('en-IN')}`
               : 'All Clear ✓'
             }
           </p>
@@ -98,21 +95,13 @@ export default function MyPaymentsPage() {
   )
 }
 
-// ─── Per-Vishi Section ────────────────────────────────────────────────────────
 
-function VishiPaymentSection({
-  group,
-}: {
-  group: { vishi_id: number; vishi_name: string; slots: MyVishiPaymentGroup[] }
-}) {
-  // Start first vishi expanded
+function VishiPaymentSection({ group }: { group: MyPaymentVishiGroup }) {
   const [expanded, setExpanded] = useState(false)
 
-  // Aggregate balance across all slots in this vishi
-  const totalBalance = group.slots.reduce(
-    (sum, s) => sum + parseFloat(s.balance), 0
-  )
-  const hasDue      = group.slots.some((s) => s.ledger_status === 'due')
+  const totalBalance = parseFloat(group.total_balance)
+  // FIXED: use group.slots[].status not ledger_status
+  const hasDue      = group.slots.some((s) => s.status === 'due')
   const balanceCls  =
     totalBalance < 0 ? 'text-red-500' :
     totalBalance > 0 ? 'text-blue-500' :
@@ -120,18 +109,14 @@ function VishiPaymentSection({
 
   return (
     <Card className="rounded-xl overflow-hidden">
-      {/* Vishi header — always visible */}
       <CardHeader className="pb-0 pt-4 px-4">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base truncate flex-1">{group.vishi_name}</CardTitle>
-          {hasDue && (
-            <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
-          )}
+          {hasDue && <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />}
         </div>
       </CardHeader>
 
       <CardContent className="px-4 pb-0">
-        {/* Balance row */}
         <div className="flex items-center justify-between py-3">
           <div>
             <p className="text-xs text-muted-foreground">Total Balance</p>
@@ -156,11 +141,11 @@ function VishiPaymentSection({
         </div>
       </CardContent>
 
-      {/* Expanded: each slot with its entries */}
       {expanded && (
         <div className="border-t divide-y">
-          {group.slots.map((slot) => (
-            <SlotSection key={slot.participant_id} slot={slot} />
+          {group.slots.map((slot, i) => (
+            // FIXED: no participant_id on payment slots — use index + slot_name as key
+            <SlotSection key={`${slot.slot_name}-${i}`} slot={slot} />
           ))}
         </div>
       )}
@@ -168,28 +153,27 @@ function VishiPaymentSection({
   )
 }
 
-// ─── Per-Slot Section ─────────────────────────────────────────────────────────
 
-function SlotSection({ slot }: { slot: MyVishiPaymentGroup }) {
+function SlotSection({ slot }: { slot: MyPaymentSlot }) {
   const [showEntries, setShowEntries] = useState(false)
 
   const bal     = parseFloat(slot.balance)
   const balCls  = bal < 0 ? 'text-red-500' : bal > 0 ? 'text-blue-500' : 'text-green-600'
   const balText =
     bal < 0 ? `-₹${Math.abs(bal).toLocaleString('en-IN')}` :
-    bal > 0 ? `+₹${bal.toLocaleString('en-IN')}`           :
+    bal > 0 ? `+₹${bal.toLocaleString('en-IN')}` :
               'Paid'
 
   return (
     <div className="px-4 py-3">
-      {/* Slot header */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">{slot.slot_name || 'My Slot'}</p>
           <p className={`text-sm font-semibold mt-0.5 ${balCls}`}>{balText}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <LedgerStatusBadge status={slot.ledger_status} />
+          {/* FIXED: field is slot.status not slot.ledger_status */}
+          <LedgerStatusBadge status={slot.status} />
           {slot.entries.length > 0 && (
             <Button
               variant="ghost"
@@ -207,11 +191,11 @@ function SlotSection({ slot }: { slot: MyVishiPaymentGroup }) {
         </div>
       </div>
 
-      {/* Entries list — lazy toggle, already in response (no extra fetch) */}
       {showEntries && slot.entries.length > 0 && (
         <div className="mt-2 space-y-0 border rounded-lg overflow-hidden divide-y bg-muted/20">
           {[...slot.entries].reverse().map((entry) => (
-            <EntryRow key={entry.entry_id} entry={entry} />
+            // FIXED: entry.id not entry.entry_id
+            <EntryRow key={entry.id} entry={entry} />
           ))}
         </div>
       )}
@@ -219,9 +203,8 @@ function SlotSection({ slot }: { slot: MyVishiPaymentGroup }) {
   )
 }
 
-// ─── Entry Row ────────────────────────────────────────────────────────────────
 
-function EntryRow({ entry }: { entry: MyPaymentEntry }) {
+function EntryRow({ entry }: { entry: PaymentEntry }) {
   const isCharge = entry.entry_type === 'charge'
   const amount   = parseFloat(entry.amount)
 

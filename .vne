@@ -1,0 +1,25 @@
+# --- Docker Hub Images ---
+BACKEND_IMAGE=yashsarvaiya2002/vishi-backend:latest
+FRONTEND_IMAGE=yashsarvaiya2002/vishi-frontend:latest
+
+# --- Database ---
+DB_NAME=vishi_db
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_PORT=5432
+
+# --- Django ---
+DEBUG=False
+SECRET_KEY=change-me-to-a-very-long-random-secret-key
+ALLOWED_HOSTS=localhost,127.0.0.1,backend
+
+# --- CORS — must match frontend port below ---
+CORS_ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
+
+# --- Superuser ---
+SUPERUSER_MOBILE=yournumber
+SUPERUSER_PASSWORD=yourpassword
+
+# --- Frontend runtime (next-runtime-env, NOT baked into image) ---
+# Must match backend port below
+NEXT_PUBLIC_API_URL=http://localhost:8001

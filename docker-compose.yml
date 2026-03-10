@@ -1,0 +1,58 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: vishi_db
+    restart: always
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - vishi_postgres_data:/var/lib/postgresql/data/
+    networks:
+      - vishi_network
+
+  backend:
+    build:
+      context: ../vishi-backend
+      dockerfile: Dockerfile
+    image: ${BACKEND_IMAGE}
+    container_name: vishi_backend
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db        # overrides .env localhost → docker service name
+    ports:
+      - "8001:8000"       # browser hits localhost:9000 → container:8000
+    volumes:
+      - vishi_static:/app/staticfiles
+    depends_on:
+      - db
+    networks:
+      - vishi_network
+
+  frontend:
+    build:
+      context: ../vishi-frontend
+      dockerfile: Dockerfile
+    image: ${FRONTEND_IMAGE}
+    container_name: vishi_frontend
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "3001:3000"       # browser hits localhost:4000 → container:3000
+    depends_on:
+      - backend
+    networks:
+      - vishi_network
+
+networks:
+  vishi_network:
+    driver: bridge
+
+volumes:
+  vishi_postgres_data:
+  vishi_static:
