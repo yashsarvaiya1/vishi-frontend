@@ -173,3 +173,4 @@ export interface ParticipantsQueryParams {
   is_drawn?:  boolean
   search?:    string
 }
+

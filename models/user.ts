@@ -16,7 +16,7 @@ export interface User {
   is_superuser:        boolean
   date_joined:         string
   last_login:          string | null
-  password_set:        boolean   // ← ADDED: shows if user has activated account
+  password_set:        boolean
 }
 
 // ─── Paginated ────────────────────────────────────────────────────────────────
@@ -59,4 +59,5 @@ export interface UsersQueryParams {
   is_active?: boolean
   ordering?:  'date_joined' | '-date_joined' | 'username' | 'mobile_number'
   page?:      number
+  page_size?: number   // passed as ?page_size=500 to fetch all active users in one call
 }

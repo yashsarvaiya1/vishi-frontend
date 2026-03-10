@@ -1,33 +1,31 @@
 // services/dashboardService.ts
 
 import api from '@/lib/axios'
-import type {
-  AdminDashboard,
-  UserDashboard,
-  PaymentsSummary,
-  MyVishis,
-  MyPayments,
-} from '@/models/dashboard'
+import type { AdminDashboard }      from '@/models/dashboard'
+import type { PaymentsSummary }     from '@/models/dashboard'
+import type { MyVishiGroup }        from '@/models/dashboard'
+import type { MyPaymentVishiGroup } from '@/models/dashboard'
 
 
 export const dashboardService = {
   // GET /api/dashboard/
-  // M1 — backend returns AdminDashboard if is_superuser, else UserDashboard
-  get: () =>
-    api.get<AdminDashboard | UserDashboard>('/api/dashboard/'),
+  // M1 — Superuser only
+  getAdminDashboard: () =>
+    api.get<AdminDashboard>('/api/dashboard/'),
 
-  // GET /api/payments/summary/
-  // M3 — admin only: cross-vishi grouped payments overview
+  // GET /api/payments-summary/
+  // M3 — Superuser only: cross-vishi grouped payments overview
+  // FIXED: was /api/payments/summary/ — correct URL is /api/payments-summary/
   getPaymentsSummary: () =>
-    api.get<PaymentsSummary>('/api/payments/summary/'),
+    api.get<PaymentsSummary>('/api/payments-summary/'),
 
   // GET /api/profile/me/vishis/
-  // M5 — user's own vishis with all slots grouped per vishi
+  // M5 — Any authenticated user. Returns plain array — NOT paginated
   getMyVishis: () =>
-    api.get<MyVishis>('/api/profile/me/vishis/'),
+    api.get<MyVishiGroup[]>('/api/profile/me/vishis/'),
 
   // GET /api/profile/me/payments/
-  // M6 — user's own payment history grouped by vishi
+  // M6 — Any authenticated user. Returns plain array — NOT paginated
   getMyPayments: () =>
-    api.get<MyPayments>('/api/profile/me/payments/'),
+    api.get<MyPaymentVishiGroup[]>('/api/profile/me/payments/'),
 }

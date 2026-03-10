@@ -2,14 +2,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useSetPassword } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useRouter }           from 'next/navigation'
+import { useSetPassword }      from '@/hooks/useAuth'
+import { Button }              from '@/components/ui/button'
+import { Input }               from '@/components/ui/input'
+import { Label }               from '@/components/ui/label'
+import {
+  Card, CardContent, CardHeader, CardTitle, CardDescription,
+} from '@/components/ui/card'
 import { Loader2, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn }                  from '@/lib/utils'
 
 export default function SetPasswordPage() {
   const router   = useRouter()
@@ -29,8 +31,9 @@ export default function SetPasswordPage() {
     setUsername(u ?? '')
   }, [router])
 
+  // Backend requires minimum 6 characters
+  const isLong    = password.length >= 6
   const mismatch  = confirm.length > 0 && password !== confirm
-  const isLong    = password.length >= 4
   const canSubmit = isLong && password === confirm && !isPending
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -72,6 +75,7 @@ export default function SetPasswordPage() {
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Password field */}
             <div className="space-y-2">
               <Label htmlFor="password">New Password</Label>
               <div className="relative">
@@ -79,7 +83,7 @@ export default function SetPasswordPage() {
                   id="password"
                   type={showPass ? 'text' : 'password'}
                   autoComplete="new-password"
-                  placeholder="Create a password (min. 4 chars)"
+                  placeholder="Min. 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isPending}
@@ -95,18 +99,20 @@ export default function SetPasswordPage() {
                   {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {/* Inline length hint */}
               {password.length > 0 && (
                 <p className={cn(
                   'text-xs flex items-center gap-1',
                   isLong ? 'text-green-600' : 'text-muted-foreground'
                 )}>
-                  {isLong && <CheckCircle2 className="h-3 w-3" />}
-                  {isLong ? 'Good length' : `${4 - password.length} more character${4 - password.length !== 1 ? 's' : ''} needed`}
+                  {isLong
+                    ? <><CheckCircle2 className="h-3 w-3" /> Good length</>
+                    : `${6 - password.length} more character${6 - password.length !== 1 ? 's' : ''} needed`
+                  }
                 </p>
               )}
             </div>
 
+            {/* Confirm field */}
             <div className="space-y-2">
               <Label htmlFor="confirm">Confirm Password</Label>
               <div className="relative">

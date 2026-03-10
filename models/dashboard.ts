@@ -1,19 +1,24 @@
 // models/dashboard.ts
 
-import type { LedgerStatus, VishiStatus, EntryType } from './vishi'
+import type { VishiFrequency, VishiStatus, LedgerStatus } from './vishi'
+import type { CollectionLedger, PaymentEntry }            from './ledger'
+
 
 // ─── M1: Admin Dashboard ──────────────────────────────────────────────────────
+// Aligns with backend DashboardSerializer + DashboardActionSerializer
+
 
 export type AlertType = 'draw_overdue' | 'release_pending' | 'payments_pending'
 
+
 export interface ActionAlert {
-  vishi_id:      number
-  vishi_name:    string
-  type:          AlertType
-  detail:        string
-  days_overdue?: number          // for draw_overdue / release_pending
-  pending_count?: number         // for payments_pending
+  vishi_id:   number
+  vishi_name: string
+  action:     AlertType   // ← FIXED: was `type`, backend returns `action`
+  detail:     string      // human-readable label e.g. "Draw overdue by 3 days"
+  // NOTE: days_overdue / pending_count removed — backend embeds them in `detail` string
 }
+
 
 export interface UpcomingEvent {
   date:       string
@@ -22,41 +27,32 @@ export interface UpcomingEvent {
   event_type: 'draw' | 'collection' | 'release'
 }
 
+
 export interface AdminDashboard {
-  active_vishis:   number
-  upcoming_vishis: number
-  total_members:   number   // total active VishiParticipant count
-  total_users:     number   // total active User count
-  action_alerts:   ActionAlert[]
-  upcoming_events: UpcomingEvent[]   // next 7 days
+  active_vishis_count:   number          // ← FIXED: was active_vishis
+  upcoming_vishis_count: number          // ← FIXED: was upcoming_vishis
+  total_members:         number          // total active VishiParticipant distinct users
+  total_users:           number          // total active non-superuser Users
+  action_required:       ActionAlert[]   // ← FIXED: was action_alerts
+  upcoming_this_week:    UpcomingEvent[] // ← FIXED: was upcoming_events
 }
 
-// ─── M1: User Dashboard ───────────────────────────────────────────────────────
 
-export interface MyDashboardSlot {
-  participant_id: number
-  slot_name:      string
-  balance:        string
-  ledger_status:  LedgerStatus
-  is_drawn:       boolean
+// NOTE: No UserDashboard API endpoint exists.
+// The user home screen is DERIVED on the frontend from:
+//   - GET /api/profile/me/vishis/  → MyVishiGroup[]   (M5)
+//   - GET /api/profile/me/payments/ → MyPaymentVishiGroup[]  (M6)
+// Use this frontend-computed shape in the Home screen component:
+export interface UserHomeDerived {
+  active_vishis_count:   number    // derived: filter my_slots with status=active
+  total_pending_balance: string    // derived: sum of negative balances across all groups
+  my_vishis:             MyVishiGroup[]
 }
 
-export interface MyDashboardVishi {
-  vishi_id:      number
-  vishi_name:    string
-  status:        VishiStatus
-  current_cycle: number
-  total_cycles:  number
-  my_slots:      MyDashboardSlot[]
-}
-
-export interface UserDashboard {
-  active_vishis:         number
-  total_pending_balance: string   // sum of all negative balances
-  my_vishis:             MyDashboardVishi[]
-}
 
 // ─── M2: Skip Records ─────────────────────────────────────────────────────────
+// Aligns with backend SkipRecordSerializer
+
 
 export interface SkipRecord {
   id:         number
@@ -66,6 +62,7 @@ export interface SkipRecord {
   is_auto:    boolean
 }
 
+
 export interface PaginatedSkipRecords {
   count:    number
   next:     string | null
@@ -73,74 +70,92 @@ export interface PaginatedSkipRecords {
   results:  SkipRecord[]
 }
 
-// ─── M3: Payments Summary (Admin — cross-vishi) ───────────────────────────────
 
-export interface LedgerSummaryItem {
-  ledger_id:        number
-  participant_id:   number
-  participant_name: string
-  mobile_number:    string
-  balance:          string
-  ledger_status:    LedgerStatus
-}
+// ─── M3: Payments Summary (Admin — cross-vishi) ───────────────────────────────
+// Aligns with backend PaymentsSummarySerializer + PaymentVishiBreakdownSerializer
+
 
 export interface VishiPaymentGroup {
-  vishi_id:          number
-  vishi_name:        string
-  status:            VishiStatus
-  total_due:         string   // sum of negative balances
-  total_overpaid:    string   // sum of positive balances
-  participant_count: number
-  due_count:         number
-  ledgers:           LedgerSummaryItem[]
+  vishi_id:         number
+  vishi_name:       string
+  total_due:        string              // sum of abs(negative balances) for due ledgers
+  due_participants: number              // ← FIXED: was due_count
+  ledgers:          CollectionLedger[]  // ← FIXED: full CollectionLedger objects (imported)
+  // REMOVED: status, total_overpaid, participant_count — not in backend serializer
 }
+
 
 export interface PaymentsSummary {
-  total_outstanding: string   // total across all vishis
-  total_overpaid:    string
-  vishi_groups:      VishiPaymentGroup[]
+  total_outstanding: string              // total across all vishis
+  total_due_count:   number             // ← FIXED: was total_overpaid (wrong concept)
+  by_vishi:          VishiPaymentGroup[] // ← FIXED: was vishi_groups
 }
+
 
 // ─── M4: User Participations (Admin view of specific user) ────────────────────
+// Aligns with backend UserParticipationSlotSerializer
+// NOTE: Backend returns a FLAT ARRAY — not a wrapped object
+
+
+export interface DrawRecordSnapshot {
+  cycle_number:    number
+  drawn_at:        string
+  was_fixed:       boolean
+  is_released:     boolean
+  released_at:     string | null
+  released_amount: string | null
+}
+
 
 export interface UserParticipationSlot {
-  participant_id: number
-  vishi_id:       number
-  vishi_name:     string
-  vishi_status:   VishiStatus
-  slot_name:      string
-  is_active:      boolean
-  is_drawn:       boolean
-  balance:        string
-  ledger_status:  LedgerStatus
-  joined_at:      string
+  id:              number           // ← FIXED: was participant_id — backend uses `id`
+  vishi_id:        number
+  vishi_name_full: string           // the Vishi's name e.g. "Family Vishi 2026"
+  vishi_status:    VishiStatus
+  vishi_name:      string           // the SLOT name e.g. "Raj-Home" (same field name as backend)
+  is_active:       boolean
+  is_drawn:        boolean
+  joined_at:       string
+  ledger_balance:  string | null    // ← FIXED: was `balance`
+  ledger_status:   LedgerStatus | null
+  draw_record:     DrawRecordSnapshot | null
 }
 
-export interface UserParticipations {
-  user_id:        number
-  username:       string
-  mobile_number:  string
-  participations: UserParticipationSlot[]
-}
+// Backend returns UserParticipationSlot[] directly — no wrapper object
+// REMOVED: UserParticipations wrapper interface
+
 
 // ─── M5: My Vishis (User grouped view) ───────────────────────────────────────
+// Aligns with backend MyVishiSlotSerializer + MyVishiGroupedSerializer
+// NOTE: Backend returns MyVishiGroup[] — plain array, NOT paginated
+
+
+export interface MyVishiDrawRecord {
+  cycle_number:    number
+  drawn_at:        string
+  is_released:     boolean
+  released_amount: string | null
+}
+
 
 export interface MyVishiSlot {
-  participant_id: number
-  slot_name:      string
+  id:             number           // ← FIXED: was participant_id
+  vishi_name:     string           // slot name e.g. "Raj-Home"
   is_active:      boolean
   is_drawn:       boolean
-  balance:        string
-  ledger_status:  LedgerStatus
-  draw_cycle:     number | null
-  drawn_at:       string | null
+  joined_at:      string
+  ledger_balance: string | null    // ← FIXED: was `balance`
+  ledger_status:  LedgerStatus | null
+  draw_record:    MyVishiDrawRecord | null
+  // REMOVED: draw_cycle, drawn_at (they're nested inside draw_record now)
 }
+
 
 export interface MyVishiGroup {
   vishi_id:                number
   vishi_name:              string
   amount:                  string
-  frequency:               string
+  frequency:               VishiFrequency
   status:                  VishiStatus
   current_cycle:           number
   total_cycles:            number
@@ -148,35 +163,35 @@ export interface MyVishiGroup {
   current_collection_date: string
   current_release_date:    string
   my_slots:                MyVishiSlot[]
+  total_balance:           string    // sum across all my slots
+  has_due:                 boolean   // true if any slot has status='due'
 }
 
-export interface MyVishis {
-  count:   number
-  results: MyVishiGroup[]
-}
+// Backend returns MyVishiGroup[] directly — plain array
+// REMOVED: MyVishis wrapper { count, results } — no pagination on this endpoint
+
 
 // ─── M6: My Payments (User grouped by vishi) ─────────────────────────────────
+// Aligns with backend MyPaymentVishiSerializer
+// NOTE: Backend returns MyPaymentVishiGroup[] — plain array, NOT paginated
 
-export interface MyPaymentEntry {
-  entry_id:     number
-  amount:       string
-  entry_type:   EntryType
-  cycle_number: number
-  note:         string
-  created_at:   string
+
+export interface MyPaymentSlot {
+  slot_name: string
+  balance:   string
+  status:    LedgerStatus
+  entries:   PaymentEntry[]  // ← imported from ledger.ts
 }
 
-export interface MyVishiPaymentGroup {
-  vishi_id:       number
-  vishi_name:     string
-  participant_id: number
-  slot_name:      string
-  balance:        string
-  ledger_status:  LedgerStatus
-  entries:        MyPaymentEntry[]
+
+export interface MyPaymentVishiGroup {
+  vishi_id:      number
+  vishi_name:    string
+  vishi_status:  VishiStatus
+  total_balance: string        // sum across all slots for this vishi
+  slots:         MyPaymentSlot[]
 }
 
-export interface MyPayments {
-  total_pending_balance: string
-  groups:                MyVishiPaymentGroup[]
-}
+// Backend returns MyPaymentVishiGroup[] directly — plain array
+// REMOVED: MyPayments wrapper { total_pending_balance, groups }
+// Derive total_pending_balance on the frontend by summing negative total_balance values

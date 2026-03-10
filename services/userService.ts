@@ -8,7 +8,7 @@ import type {
   UpdateUserPayload,
   UsersQueryParams,
 } from '@/models/user'
-import type { UserParticipations } from '@/models/dashboard'
+import type { UserParticipationSlot } from '@/models/dashboard'
 
 
 export const userService = {
@@ -16,16 +16,18 @@ export const userService = {
   list: (params?: UsersQueryParams) =>
     api.get<PaginatedUsers>('/api/users/', { params }),
 
+
   // GET /api/users/{id}/
   get: (id: number) =>
     api.get<User>(`/api/users/${id}/`),
+
 
   // POST /api/users/
   create: (data: CreateUserPayload) =>
     api.post<User>('/api/users/', data),
 
+
   // PATCH /api/users/{id}/
-  // Only send safe fields — never send is_superuser, is_staff, is_active via this method
   update: (id: number, data: UpdateUserPayload) => {
     const safe: UpdateUserPayload = {}
     if (data.username            !== undefined) safe.username            = data.username
@@ -35,19 +37,25 @@ export const userService = {
     return api.patch<User>(`/api/users/${id}/`, safe)
   },
 
+
   // DELETE /api/users/{id}/ → soft-delete (sets is_active=false)
   deactivate: (id: number) =>
     api.delete<{ detail: string }>(`/api/users/${id}/`),
+
 
   // POST /api/users/{id}/activate/
   activate: (id: number) =>
     api.post<{ detail: string }>(`/api/users/${id}/activate/`),
 
-  // POST /api/users/{id}/clear-password/   ← FIXED: was clear_password (underscore)
+
+  // POST /api/users/{id}/clear-password/
   clearPassword: (id: number) =>
     api.post<{ detail: string }>(`/api/users/${id}/clear-password/`),
 
-  // GET /api/users/{id}/participations/    ← ADDED: M4 — admin view of user's all slots + balances
+
+  // GET /api/users/{id}/participations/
+  // M4 — Backend returns UserParticipationSlot[] directly (flat array, no wrapper)
+  // FIXED: was returning UserParticipations wrapper — backend doesn't wrap
   getParticipations: (id: number) =>
-    api.get<UserParticipations>(`/api/users/${id}/participations/`),
+    api.get<UserParticipationSlot[]>(`/api/users/${id}/participations/`),
 }
