@@ -41,6 +41,7 @@ export interface VishiParticipantPublic {
   id:           number
   vishi_name:   string
   username:     string
+  user_id:      number 
   is_drawn:     boolean
   is_active:    boolean
   drawn_at:     string | null
