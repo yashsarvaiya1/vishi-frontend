@@ -2,9 +2,9 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-// ← FIXED: participantService deleted — import from vishiService directly
 import { vishiService } from '@/services/vishiService'
-import { VISHI_KEYS } from '@/hooks/useVishis'
+import { VISHI_KEYS }   from '@/hooks/useVishis'
+import { LEDGER_KEYS }  from '@/hooks/useLedgers'
 import type {
   CreateParticipantPayload,
   UpdateParticipantPayload,
@@ -23,7 +23,6 @@ export const PARTICIPANT_KEYS = {
 export function useParticipants(vishiId: number, params?: ParticipantsQueryParams) {
   return useQuery({
     queryKey: PARTICIPANT_KEYS.list(vishiId, params),
-    // ← FIXED: was participantService.list → vishiService.listParticipants
     queryFn:  () => vishiService.listParticipants(vishiId, params).then((r) => r.data),
     enabled:  !!vishiId,
   })
@@ -34,11 +33,9 @@ export function useAddParticipant(vishiId: number) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: CreateParticipantPayload) =>
-      // ← FIXED: was participantService.create → vishiService.addParticipant
       vishiService.addParticipant(vishiId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: PARTICIPANT_KEYS.list(vishiId) })
-      // total_cycles + finish_date on vishi change when participant is added
       qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(vishiId) })
       toast.success('Participant added.')
     },
@@ -52,7 +49,6 @@ export function useUpdateParticipant(vishiId: number, participantId: number) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: UpdateParticipantPayload) =>
-      // ← FIXED: was participantService.update → vishiService.updateParticipant
       vishiService.updateParticipant(vishiId, participantId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: PARTICIPANT_KEYS.list(vishiId) })
@@ -69,15 +65,42 @@ export function useRemoveParticipant(vishiId: number) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (participantId: number) =>
-      // ← FIXED: was participantService.remove → vishiService.removeParticipant
       vishiService.removeParticipant(vishiId, participantId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: PARTICIPANT_KEYS.list(vishiId) })
-      // total_cycles + finish_date change on non-drawn participant removal
       qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(vishiId) })
       toast.success('Participant removed.')
     },
     onError: (err: any) =>
       toast.error(err?.response?.data?.detail ?? 'Failed to remove participant.'),
+  })
+}
+
+
+// ─── Charge / Waive ───────────────────────────────────────────────────────────
+
+export function useChargeWaive(vishiId: number, participantId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { action: 'charge' | 'waive'; cycle_number: number; note?: string }) =>
+      vishiService.chargeWaive(vishiId, participantId, data),
+    onSuccess: (_res, variables) => {
+      // Invalidate ledgers so balances refresh in payments tab
+      qc.invalidateQueries({ queryKey: LEDGER_KEYS.all(vishiId) })
+      // Invalidate vishi detail so pending_payments_count badge updates
+      qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(vishiId) })
+      // Invalidate payments summary card
+      qc.invalidateQueries({ queryKey: ['payments', 'summary'] })
+      // Invalidate my-vishis/my-payments for the affected user
+      qc.invalidateQueries({ queryKey: ['profile', 'my-vishis'] })
+      qc.invalidateQueries({ queryKey: ['profile', 'my-payments'] })
+      toast.success(
+        variables.action === 'charge'
+          ? `Charged for cycle ${variables.cycle_number}.`
+          : `Waived cycle ${variables.cycle_number}.`
+      )
+    },
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.detail ?? 'Operation failed.'),
   })
 }

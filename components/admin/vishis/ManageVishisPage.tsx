@@ -9,19 +9,13 @@ import { Button }    from '@/components/ui/button'
 import { Input }     from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton }  from '@/components/ui/skeleton'
-import { Badge }     from '@/components/ui/badge'
 import { Plus, Search, ChevronRight, LayoutDashboard, Trash2 } from 'lucide-react'
 import AdminRoute    from '@/components/shared/AdminRoute'
 import PageHeader    from '@/components/shared/PageHeader'
 import EmptyState    from '@/components/shared/EmptyState'
-import {
-  VishiStatusBadge,
-  getVishiDisplayStatus,
-} from '@/components/shared/StatusBadge'
+import { VishiStatusBadge, getVishiDisplayStatus } from '@/components/shared/StatusBadge'
 import type { VishiAdmin } from '@/models/vishi'
 
-// Flow §4.1 — status filter tabs (excludes draw_pending / release_pending —
-// those are computed display states not raw API statuses)
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'completed'
 
 const STATUS_TABS: { label: string; value: StatusFilter }[] = [
@@ -33,24 +27,20 @@ const STATUS_TABS: { label: string; value: StatusFilter }[] = [
 
 export default function ManageVishisPage() {
   const router = useRouter()
-
   const [search,       setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  // Flow §4.1 — deleted toggle: show soft-deleted vishis
   const [showDeleted,  setShowDeleted]  = useState(false)
 
+  // ← FIXED: don't pass status when 'all' — let backend return everything
+  // ← FIXED: is_deleted filter sent to backend so soft-deleted are fetched server-side
   const { data, isLoading } = useVishis({
-    search,
-    status: statusFilter === 'all' ? undefined : statusFilter,
-    ...(showDeleted ? { is_deleted: true } : {}),
+    search:     search || undefined,
+    status:     statusFilter === 'all' ? undefined : statusFilter,
+    is_deleted: showDeleted ? true : undefined,
   })
+
+  // ← FIXED: backend already filters by status via params — no client-side double-filter needed
   const vishis = (data?.results ?? []) as VishiAdmin[]
-
-  const filtered = statusFilter === 'all'
-    ? vishis
-    : vishis.filter((v) => v.status === statusFilter)
-
-  const deletedCount = showDeleted ? vishis.length : undefined
 
   return (
     <AdminRoute>
@@ -77,34 +67,26 @@ export default function ManageVishisPage() {
 
         {/* Status filter pills */}
         <div className="flex gap-1.5 flex-wrap">
-          {STATUS_TABS.map((tab) => {
-            const count = tab.value === 'all'
-              ? vishis.length
-              : vishis.filter((v) => v.status === tab.value).length
-            return (
-              <button
-                key={tab.value}
-                onClick={() => setStatusFilter(tab.value)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  statusFilter === tab.value
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
-              >
-                {tab.label}
-                <span className="ml-1.5 opacity-70">{count}</span>
-              </button>
-            )
-          })}
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setStatusFilter(tab.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                statusFilter === tab.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* Flow §4.1 — deleted toggle */}
+        {/* Deleted toggle */}
         <button
           onClick={() => { setShowDeleted((v) => !v); setStatusFilter('all') }}
           className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
-            showDeleted
-              ? 'text-destructive'
-              : 'text-muted-foreground hover:text-foreground'
+            showDeleted ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -115,15 +97,13 @@ export default function ManageVishisPage() {
         <div className="space-y-3">
           {isLoading ? (
             [...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)
-          ) : filtered.length === 0 ? (
+          ) : vishis.length === 0 ? (
             <EmptyState
               icon={LayoutDashboard}
               title={
-                showDeleted
-                  ? 'No deleted vishis'
-                  : search
-                  ? `No results for "${search}"`
-                  : 'No vishis found'
+                showDeleted ? 'No deleted vishis' :
+                search       ? `No results for "${search}"` :
+                               'No vishis found'
               }
               description={!search && !showDeleted ? 'Create a vishi to get started.' : undefined}
             >
@@ -134,7 +114,7 @@ export default function ManageVishisPage() {
               )}
             </EmptyState>
           ) : (
-            filtered.map((vishi) => (
+            vishis.map((vishi) => (
               <VishiCard
                 key={vishi.id}
                 vishi={vishi}
@@ -149,31 +129,22 @@ export default function ManageVishisPage() {
   )
 }
 
-// ─── Vishi card ───────────────────────────────────────────────────────────────
-
-function VishiCard({
-  vishi, isDeleted, onClick,
-}: {
+function VishiCard({ vishi, isDeleted, onClick }: {
   vishi:     VishiAdmin
   isDeleted: boolean
   onClick:   () => void
 }) {
-  /*
-   * Flow §4.1 — computed display status:
-   * draw_pending  = active + today >= current_draw_date + no draw record for current_cycle+1
-   * release_pending = active + today >= current_release_date + is_released=false on latest draw
-   * getVishiDisplayStatus handles this logic via passed flags from VishiAdmin fields.
-   */
-  const today         = new Date()
-  const drawDate      = new Date(vishi.current_draw_date)
-  const releaseDate   = new Date(vishi.current_release_date)
-  const latestDraw    = vishi.draw_records?.[vishi.draw_records.length - 1]
+  const today       = new Date()
+  const drawDate    = new Date(vishi.current_draw_date)
+  const latestDraw  = vishi.draw_records?.[vishi.draw_records.length - 1]
 
+  // ← FIXED: was checking current_cycle, should be current_cycle + 1
   const drawOverdue = vishi.status === 'active'
     && today >= drawDate
-    && !vishi.draw_records.find((r) => r.cycle_number === vishi.current_cycle)
-  const releasePending  = vishi.status === 'active'
-    && today >= releaseDate
+    && !vishi.draw_records?.find((r) => r.cycle_number === vishi.current_cycle + 1)
+
+  // ← FIXED: release can happen any time after draw — just check latest is unreleased
+  const releasePending = vishi.status === 'active'
     && !!latestDraw
     && !latestDraw.is_released
 
@@ -214,7 +185,6 @@ function VishiCard({
             Next draw: <span className="font-medium">{formatDate(vishi.current_draw_date)}</span>
           </p>
         )}
-        {/* Draw overdue / release pending inline cues */}
         {drawOverdue && (
           <p className="text-xs font-semibold text-amber-600">⚠ Draw overdue</p>
         )}
