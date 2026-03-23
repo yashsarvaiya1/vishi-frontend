@@ -172,3 +172,20 @@ export function useSkipRecords(vishiId: number) {
     enabled:  !!vishiId,
   })
 }
+
+export function useRestoreVishi(id: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => vishiService.restoreVishi(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: VISHI_KEYS.all })
+      qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(id) })
+      qc.invalidateQueries({ queryKey: ['payments', 'summary'] })  // ← ADDED: refreshes collect page
+      qc.invalidateQueries({ queryKey: ['dashboard'] })             // ← ADDED: refreshes admin home
+      toast.success('Vishi restored.')
+    },
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.detail ?? 'Failed to restore vishi.'),
+  })
+}
+

@@ -46,6 +46,8 @@ export interface VishiParticipantPublic {
   is_active:    boolean
   drawn_at:     string | null
   cycle_number: number | null
+  ledger_balance: string | null   // ← ADD
+  ledger_status:  LedgerStatus | null 
 }
 
 // ─── Draw records ─────────────────────────────────────────────────────────────

@@ -27,6 +27,7 @@ export default function MyVishiDetailPage({ id }: { id: number }) {
   const hasSeenDraw  = useUIStore((s) => s.hasSeenDraw)
   const storeUserId  = useAuthStore((s) => s.user_id)      // ← moved up
   const storeUsername = useAuthStore((s) => s.username)    // ← moved up
+  const storeMobile   = useAuthStore((s) => s.mobile_number) 
 
   const [showAnim,    setShowAnim]    = useState(false)
   const [animChecked, setAnimChecked] = useState(false)
@@ -53,14 +54,17 @@ export default function MyVishiDetailPage({ id }: { id: number }) {
 
   // Admin gets VishiSerializer → participants have user_detail.id
   // Regular user gets VishiPublicSerializer → participants have user_id
-  const mySlots = (vishi.participants as any[]).filter((p) => {
+ const mySlots = (vishi.participants as any[]).filter((p) => {
     if (!p.is_active) return false
-    if (storeUserId) {
-      if (p.user_detail?.id)  return p.user_detail.id === storeUserId
-      if (p.user_id != null)  return p.user_id === storeUserId
+    // VishiParticipantAdmin shape (superuser) — has user_detail.id + user_detail.mobile_number
+    if (p.user_detail) {
+      if (storeUserId && p.user_detail.id === storeUserId)                  return true
+      if (storeMobile && p.user_detail.mobile_number === storeMobile)       return true
     }
-    // fallback: match by username
-    if (storeUsername && p.username) return p.username === storeUsername
+    // VishiParticipantPublic shape (regular user) — has user_id + username
+    if (storeUserId  && p.user_id  != null && p.user_id  === storeUserId)  return true
+    if (storeMobile  && p.username && p.username === storeMobile)           return true
+    if (storeUsername && p.username && p.username === storeUsername)        return true
     return false
   })
 
@@ -72,7 +76,7 @@ export default function MyVishiDetailPage({ id }: { id: number }) {
           cycleNumber={latestDraw.cycle_number}
           winnerName ={latestDraw.vishi_name}
           username   ={latestDraw.username}
-          amount     ={latestDraw.released_amount ?? vishi.amount}
+          amount={latestDraw.released_amount ?? String(parseFloat(vishi.amount) * vishi.total_cycles)}
           wasFixed   ={latestDraw.was_fixed}
           onDone     ={() => setShowAnim(false)}
         />
@@ -82,7 +86,7 @@ export default function MyVishiDetailPage({ id }: { id: number }) {
         <PageHeader back title={vishi.name} subtitle={formatFrequency(vishi.frequency)} />
 
         {/* Hero banner */}
-        <Card className="rounded-2xl overflow-hidden border-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
+        <Card className="rounded-2xl overflow-hidden border-0 bg-linear-to-br from-primary/10 via-primary/5 to-transparent">
           <CardContent className="px-5 py-5">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -250,7 +254,7 @@ function MySlotCard({ slot, drawRecords }: {
           <ParticipantStatusBadge is_drawn={slot.is_drawn} is_active={slot.is_active} was_fixed={winRecord?.was_fixed} />
         </div>
         {slot.is_drawn && winRecord && (
-          <div className="rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-100 dark:border-violet-800 px-3 py-3 space-y-1.5">
+          <div className="rounded-xl bg-linear-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border border-violet-100 dark:border-violet-800 px-3 py-3 space-y-1.5">
             <div className="flex items-center gap-1.5">
               <Trophy className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
               <p className="text-xs font-bold text-violet-700 dark:text-violet-300">Won Cycle {winRecord.cycle_number}</p>

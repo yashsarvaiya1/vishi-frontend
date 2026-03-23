@@ -97,4 +97,7 @@ export const vishiService = {
 
   listSkipRecords: (vishiId: number) =>
     api.get<PaginatedSkipRecords>(`/api/vishis/${vishiId}/skip-records/`),
+
+  restoreVishi: (id: number) =>
+    api.post(`/api/vishis/${id}/restore/`),
 }

@@ -98,7 +98,7 @@ export default function AdminHome({ data }: Props) {
           <div
             key={label}
             className={cn(
-              'rounded-2xl px-4 py-4 space-y-3 bg-gradient-to-br border border-transparent',
+              'rounded-2xl px-4 py-4 space-y-3 bg-linear-to-br border border-transparent',
               bg
             )}
           >

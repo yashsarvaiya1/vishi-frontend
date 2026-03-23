@@ -47,8 +47,8 @@ export default function MyPaymentsPage() {
       {/* Summary banner */}
       <div className={`rounded-2xl px-5 py-4 flex items-center gap-4 ${
         hasPending
-          ? 'bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border border-rose-100 dark:border-rose-800'
-          : 'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-100 dark:border-emerald-800'
+          ? 'bg-linear-to-br from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border border-rose-100 dark:border-rose-800'
+          : 'bg-linear-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-100 dark:border-emerald-800'
       }`}>
         <div className={`h-11 w-11 rounded-2xl flex items-center justify-center shrink-0 ${
           hasPending ? 'bg-rose-100 dark:bg-rose-900/40' : 'bg-emerald-100 dark:bg-emerald-900/40'

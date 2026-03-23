@@ -1,9 +1,10 @@
 // components/common/my-vishis/MyVishisPage.tsx
 'use client'
 
+import { useState }    from 'react'
 import { useRouter }   from 'next/navigation'
 import { useMyVishis } from '@/hooks/useDashboard'
-import { formatCurrency, formatDate, formatFrequency } from '@/lib/utils'
+import { formatCurrency, formatDate, formatFrequency,cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton }          from '@/components/ui/skeleton'
 import { Badge }             from '@/components/ui/badge'
@@ -15,14 +16,18 @@ import EmptyState from '@/components/shared/EmptyState'
 import PageHeader from '@/components/shared/PageHeader'
 import type { MyVishiGroup, MyVishiSlot } from '@/models/dashboard'
 
+type Filter = 'active' | 'completed'
 
 export default function MyVishisPage() {
   const router              = useRouter()
   const { data, isLoading } = useMyVishis()
   const vishis: MyVishiGroup[] = Array.isArray(data) ? data : []
+  const [filter, setFilter] = useState<Filter>('active')
 
-  const activeCount = vishis.filter((v) => v.status === 'active').length
-  const dueCount    = vishis.filter((v) => v.has_due).length
+  const activeVishis    = vishis.filter((v) => v.status !== 'completed')
+  const completedVishis = vishis.filter((v) => v.status === 'completed')
+  const dueCount        = activeVishis.filter((v) => v.has_due).length
+  const displayed       = filter === 'active' ? activeVishis : completedVishis
 
   return (
     <div className="space-y-4">
@@ -36,13 +41,48 @@ export default function MyVishisPage() {
         <div className="flex gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full px-3 py-1.5 text-xs font-semibold">
             <TrendingUp className="h-3 w-3" />
-            {activeCount} active
+            {activeVishis.length} active
           </div>
           {dueCount > 0 && (
             <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 rounded-full px-3 py-1.5 text-xs font-semibold">
               ⚠ {dueCount} with pending dues
             </div>
           )}
+          {completedVishis.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 rounded-full px-3 py-1.5 text-xs font-semibold">
+              ✓ {completedVishis.length} completed
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Filter pills — only show if there are completed vishis */}
+      {!isLoading && completedVishis.length > 0 && (
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setFilter('active')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+              filter === 'active'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            Active
+            {activeVishis.length > 0 && (
+              <span className="ml-1 opacity-70">{activeVishis.length}</span>
+            )}
+          </button>
+          <button
+            onClick={() => setFilter('completed')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+              filter === 'completed'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            Completed
+            <span className="ml-1 opacity-70">{completedVishis.length}</span>
+          </button>
         </div>
       )}
 
@@ -57,8 +97,12 @@ export default function MyVishisPage() {
             title="No vishis yet"
             description="You are not part of any vishi yet. Contact your admin to be added."
           />
+        ) : displayed.length === 0 ? (
+          <div className="rounded-2xl bg-muted/40 px-5 py-8 text-center">
+            <p className="text-sm text-muted-foreground">No {filter} vishis.</p>
+          </div>
         ) : (
-          vishis.map((vishi) => (
+          displayed.map((vishi) => (
             <VishiGroupCard
               key={vishi.vishi_id}
               vishi={vishi}
@@ -75,6 +119,7 @@ export default function MyVishisPage() {
 function VishiGroupCard({ vishi, onClick }: { vishi: MyVishiGroup; onClick: () => void }) {
   const displayStatus = getVishiDisplayStatus(vishi.status)
   const totalBal      = parseFloat(vishi.total_balance)
+  const isCompleted   = vishi.status === 'completed'
   const balCls        = totalBal < 0 ? 'text-rose-600' : totalBal > 0 ? 'text-sky-600' : 'text-emerald-600'
   const balText       = totalBal < 0
     ? `-₹${Math.abs(totalBal).toLocaleString('en-IN')}`
@@ -84,7 +129,10 @@ function VishiGroupCard({ vishi, onClick }: { vishi: MyVishiGroup; onClick: () =
 
   return (
     <Card
-      className="rounded-2xl cursor-pointer hover:shadow-md hover:border-primary/30 active:scale-[0.99] transition-all duration-150 group"
+      className={cn(
+        'rounded-2xl cursor-pointer hover:shadow-md hover:border-primary/30 active:scale-[0.99] transition-all duration-150 group',
+        isCompleted && 'opacity-80'
+      )}
       onClick={onClick}
     >
       <CardContent className="px-4 pt-4 pb-3 space-y-3">
@@ -103,16 +151,16 @@ function VishiGroupCard({ vishi, onClick }: { vishi: MyVishiGroup; onClick: () =
           </div>
         </div>
 
-        {/* Progress + balance row */}
+        {/* Progress + balance */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
               <span>Cycle {vishi.current_cycle}/{vishi.total_cycles}</span>
-              <span>Draw {formatDate(vishi.current_draw_date)}</span>
+              {!isCompleted && <span>Draw {formatDate(vishi.current_draw_date)}</span>}
             </div>
-            <div className="h-1 bg-muted rounded-full overflow-hidden">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary rounded-full transition-all"
+                className={cn('h-full rounded-full transition-all', isCompleted ? 'bg-teal-500' : 'bg-primary')}
                 style={{ width: `${vishi.total_cycles > 0 ? (vishi.current_cycle / vishi.total_cycles) * 100 : 0}%` }}
               />
             </div>
