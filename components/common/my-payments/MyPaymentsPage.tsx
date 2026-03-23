@@ -1,32 +1,28 @@
+// components/common/my-payments/MyPaymentsPage.tsx
 'use client'
 
 import { useMemo, useState }  from 'react'
 import { useMyPayments }      from '@/hooks/useDashboard'
 import { formatDate }         from '@/lib/utils'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton }           from '@/components/ui/skeleton'
+import { Card, CardContent }  from '@/components/ui/card'
 import { Button }             from '@/components/ui/button'
 import {
   ChevronDown, ChevronUp,
   ArrowDownCircle, ArrowUpCircle,
-  Wallet, AlertCircle, CheckCircle2,
+  Wallet, AlertCircle, CheckCircle2, IndianRupee,
 } from 'lucide-react'
 import { LedgerStatusBadge }  from '@/components/shared/StatusBadge'
 import EmptyState             from '@/components/shared/EmptyState'
 import LoadingSpinner         from '@/components/shared/LoadingSpinner'
 import PageHeader             from '@/components/shared/PageHeader'
-// FIXED: correct types from models
 import type { MyPaymentVishiGroup, MyPaymentSlot } from '@/models/dashboard'
 import type { PaymentEntry }                       from '@/models/ledger'
 
 
 export default function MyPaymentsPage() {
   const { data, isLoading, isError } = useMyPayments()
-
-  // FIXED: backend returns plain array — not { groups, total_pending_balance }
   const vishiGroups: MyPaymentVishiGroup[] = Array.isArray(data) ? data : []
 
-  // FIXED: derive total pending on frontend by summing negative total_balance
   const pending = useMemo(() => {
     return vishiGroups.reduce((sum, g) => {
       const bal = parseFloat(g.total_balance)
@@ -37,43 +33,37 @@ export default function MyPaymentsPage() {
   const hasPending = pending > 0
 
   if (isLoading) return <LoadingSpinner fullPage label="Loading payments..." />
-
-  if (isError) {
-    return (
-      <EmptyState
-        icon={AlertCircle}
-        title="Failed to load payments"
-        description="Try again later."
-      />
-    )
-  }
+  if (isError)   return (
+    <EmptyState icon={AlertCircle} title="Failed to load payments" description="Try again later." />
+  )
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageHeader
         title="My Payments"
         subtitle={`${vishiGroups.length} vishi${vishiGroups.length !== 1 ? 's' : ''}`}
       />
 
       {/* Summary banner */}
-      <div className={`rounded-xl px-4 py-4 flex items-center gap-3 ${
+      <div className={`rounded-2xl px-5 py-4 flex items-center gap-4 ${
         hasPending
-          ? 'bg-red-50 dark:bg-red-900/20'
-          : 'bg-green-50 dark:bg-green-900/20'
+          ? 'bg-linear-to-br from-rose-50 to-red-50 dark:from-rose-900/20 dark:to-red-900/20 border border-rose-100 dark:border-rose-800'
+          : 'bg-linear-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-100 dark:border-emerald-800'
       }`}>
-        {hasPending
-          ? <AlertCircle  className="h-5 w-5 text-red-500 shrink-0" />
-          : <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-        }
+        <div className={`h-11 w-11 rounded-2xl flex items-center justify-center shrink-0 ${
+          hasPending ? 'bg-rose-100 dark:bg-rose-900/40' : 'bg-emerald-100 dark:bg-emerald-900/40'
+        }`}>
+          {hasPending
+            ? <AlertCircle  className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+            : <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          }
+        </div>
         <div>
-          <p className="text-xs text-muted-foreground">
-            {hasPending ? 'Total Pending Dues' : 'Total Balance'}
+          <p className="text-xs text-muted-foreground font-medium">
+            {hasPending ? 'Total Pending Dues' : 'Payment Status'}
           </p>
-          <p className={`text-xl font-bold ${hasPending ? 'text-red-600' : 'text-green-600'}`}>
-            {hasPending
-              ? `₹${pending.toLocaleString('en-IN')}`
-              : 'All Clear ✓'
-            }
+          <p className={`text-2xl font-black mt-0.5 ${hasPending ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+            {hasPending ? `₹${pending.toLocaleString('en-IN')}` : 'All Clear ✓'}
           </p>
         </div>
       </div>
@@ -85,7 +75,7 @@ export default function MyPaymentsPage() {
           description="You are not part of any vishi. Contact admin to be added."
         />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {vishiGroups.map((group) => (
             <VishiPaymentSection key={group.vishi_id} group={group} />
           ))}
@@ -100,37 +90,29 @@ function VishiPaymentSection({ group }: { group: MyPaymentVishiGroup }) {
   const [expanded, setExpanded] = useState(false)
 
   const totalBalance = parseFloat(group.total_balance)
-  // FIXED: use group.slots[].status not ledger_status
-  const hasDue      = group.slots.some((s) => s.status === 'due')
-  const balanceCls  =
-    totalBalance < 0 ? 'text-red-500' :
-    totalBalance > 0 ? 'text-blue-500' :
-                       'text-green-600'
+  const hasDue       = group.slots.some((s) => s.status === 'due')
+  const balCls       = totalBalance < 0 ? 'text-rose-600' : totalBalance > 0 ? 'text-sky-600' : 'text-emerald-600'
+  const balText      = totalBalance === 0
+    ? '₹0'
+    : `${totalBalance < 0 ? '-' : '+'}₹${Math.abs(totalBalance).toLocaleString('en-IN')}`
 
   return (
-    <Card className="rounded-xl overflow-hidden">
-      <CardHeader className="pb-0 pt-4 px-4">
+    <Card className={`rounded-2xl overflow-hidden ${hasDue ? 'border-rose-200 dark:border-rose-800' : ''}`}>
+      <CardContent className="px-4 py-4">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base truncate flex-1">{group.vishi_name}</CardTitle>
-          {hasDue && <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />}
-        </div>
-      </CardHeader>
-
-      <CardContent className="px-4 pb-0">
-        <div className="flex items-center justify-between py-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Total Balance</p>
-            <p className={`text-xl font-bold ${balanceCls}`}>
-              {totalBalance === 0
-                ? '₹0'
-                : `${totalBalance < 0 ? '-' : '+'}₹${Math.abs(totalBalance).toLocaleString('en-IN')}`
-              }
-            </p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-sm truncate">{group.vishi_name}</p>
+              {hasDue && (
+                <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0 animate-pulse" />
+              )}
+            </div>
+            <p className={`text-xl font-black mt-0.5 ${balCls}`}>{balText}</p>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 px-2.5 text-xs gap-1 text-muted-foreground"
+            className="h-9 px-3 text-xs gap-1.5 text-muted-foreground rounded-xl hover:bg-muted shrink-0"
             onClick={() => setExpanded((v) => !v)}
           >
             {expanded
@@ -142,9 +124,8 @@ function VishiPaymentSection({ group }: { group: MyPaymentVishiGroup }) {
       </CardContent>
 
       {expanded && (
-        <div className="border-t divide-y">
+        <div className="border-t divide-y bg-muted/20">
           {group.slots.map((slot, i) => (
-            // FIXED: no participant_id on payment slots — use index + slot_name as key
             <SlotSection key={`${slot.slot_name}-${i}`} slot={slot} />
           ))}
         </div>
@@ -158,33 +139,30 @@ function SlotSection({ slot }: { slot: MyPaymentSlot }) {
   const [showEntries, setShowEntries] = useState(false)
 
   const bal     = parseFloat(slot.balance)
-  const balCls  = bal < 0 ? 'text-red-500' : bal > 0 ? 'text-blue-500' : 'text-green-600'
-  const balText =
-    bal < 0 ? `-₹${Math.abs(bal).toLocaleString('en-IN')}` :
-    bal > 0 ? `+₹${bal.toLocaleString('en-IN')}` :
-              'Paid'
+  const balCls  = bal < 0 ? 'text-rose-600' : bal > 0 ? 'text-sky-600' : 'text-emerald-600'
+  const balText = bal < 0
+    ? `-₹${Math.abs(bal).toLocaleString('en-IN')}`
+    : bal > 0
+    ? `+₹${bal.toLocaleString('en-IN')}`
+    : 'Paid'
 
   return (
     <div className="px-4 py-3">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{slot.slot_name || 'My Slot'}</p>
-          <p className={`text-sm font-semibold mt-0.5 ${balCls}`}>{balText}</p>
+          <p className="text-sm font-semibold truncate">{slot.slot_name || 'My Slot'}</p>
+          <p className={`text-sm font-bold mt-0.5 ${balCls}`}>{balText}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* FIXED: field is slot.status not slot.ledger_status */}
           <LedgerStatusBadge status={slot.status} />
           {slot.entries.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs gap-1 text-muted-foreground"
+              className="h-7 px-2 text-xs gap-1 text-muted-foreground rounded-lg"
               onClick={() => setShowEntries((v) => !v)}
             >
-              {showEntries
-                ? <ChevronUp   className="h-3 w-3" />
-                : <ChevronDown className="h-3 w-3" />
-              }
+              {showEntries ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               {slot.entries.length}
             </Button>
           )}
@@ -192,9 +170,8 @@ function SlotSection({ slot }: { slot: MyPaymentSlot }) {
       </div>
 
       {showEntries && slot.entries.length > 0 && (
-        <div className="mt-2 space-y-0 border rounded-lg overflow-hidden divide-y bg-muted/20">
+        <div className="mt-2.5 border rounded-xl overflow-hidden divide-y bg-background">
           {[...slot.entries].reverse().map((entry) => (
-            // FIXED: entry.id not entry.entry_id
             <EntryRow key={entry.id} entry={entry} />
           ))}
         </div>
@@ -210,20 +187,22 @@ function EntryRow({ entry }: { entry: PaymentEntry }) {
 
   return (
     <div className="flex items-center gap-3 px-3 py-2.5">
-      {isCharge
-        ? <ArrowDownCircle className="h-7 w-7 text-red-400   shrink-0" />
-        : <ArrowUpCircle   className="h-7 w-7 text-green-500 shrink-0" />
-      }
+      <div className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${
+        isCharge ? 'bg-rose-50 dark:bg-rose-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'
+      }`}>
+        {isCharge
+          ? <ArrowDownCircle className="h-4 w-4 text-rose-500" />
+          : <ArrowUpCircle   className="h-4 w-4 text-emerald-500" />
+        }
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium">
-          {isCharge ? 'Charge' : 'Payment'} — Cycle {entry.cycle_number}
+        <p className="text-xs font-semibold">
+          {isCharge ? 'Charge' : 'Payment'} · Cycle {entry.cycle_number}
         </p>
-        {entry.note && (
-          <p className="text-xs text-muted-foreground truncate">{entry.note}</p>
-        )}
+        {entry.note && <p className="text-xs text-muted-foreground truncate">{entry.note}</p>}
         <p className="text-xs text-muted-foreground">{formatDate(entry.created_at)}</p>
       </div>
-      <p className={`text-sm font-bold shrink-0 ${amount < 0 ? 'text-red-500' : 'text-green-600'}`}>
+      <p className={`text-sm font-bold shrink-0 ${amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
         {amount > 0 ? '+' : ''}₹{Math.abs(amount).toLocaleString('en-IN')}
       </p>
     </div>

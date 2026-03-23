@@ -41,10 +41,13 @@ export interface VishiParticipantPublic {
   id:           number
   vishi_name:   string
   username:     string
+  user_id:      number 
   is_drawn:     boolean
   is_active:    boolean
   drawn_at:     string | null
   cycle_number: number | null
+  ledger_balance: string | null   // ← ADD
+  ledger_status:  LedgerStatus | null 
 }
 
 // ─── Draw records ─────────────────────────────────────────────────────────────

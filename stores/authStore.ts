@@ -9,6 +9,7 @@ interface AuthCredentials {
   password:      string
   username:      string | null
   is_superuser:  boolean
+  user_id?:      number | null
 }
 
 interface AuthState {
@@ -17,11 +18,12 @@ interface AuthState {
   username:      string | null
   is_superuser:  boolean
   isLoggedIn:    boolean
+  user_id:       number | null   // ← ADDED here too
 
-  setAuth:        (data: AuthCredentials) => void
-  updateUsername: (username: string | null) => void  // ← ADDED: sync after profile edit
-  clearAuth:      () => void
-  isAuthenticated: () => boolean                     // ← ADDED: safe computed check
+  setAuth:         (data: AuthCredentials) => void
+  updateUsername:  (username: string | null) => void
+  clearAuth:       () => void
+  isAuthenticated: () => boolean
 }
 
 const EMPTY: Omit<AuthState, 'setAuth' | 'updateUsername' | 'clearAuth' | 'isAuthenticated'> = {
@@ -30,6 +32,7 @@ const EMPTY: Omit<AuthState, 'setAuth' | 'updateUsername' | 'clearAuth' | 'isAut
   username:      null,
   is_superuser:  false,
   isLoggedIn:    false,
+  user_id:       null,           // ← ADDED here too
 }
 
 const useAuthStore = create<AuthState>()(
@@ -44,21 +47,19 @@ const useAuthStore = create<AuthState>()(
           username:      data.username,
           is_superuser:  data.is_superuser,
           isLoggedIn:    true,
+          user_id:       data.user_id ?? null,  // ← ADDED here too
         }),
 
-      // ← ADDED: called after PATCH /api/profile/me/update/ to keep store in sync
       updateUsername: (username) => set({ username }),
+      clearAuth:      () => set({ ...EMPTY }),
 
-      clearAuth: () => set({ ...EMPTY }),
-
-      // ← ADDED: used in hooks to gate queries
       isAuthenticated: () => {
         const { mobile_number, password } = get()
         return Boolean(mobile_number && password)
       },
     }),
     {
-      name:    'auth-storage',   // must match lib/axios.ts localStorage key
+      name:    'auth-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         mobile_number: state.mobile_number,
@@ -66,6 +67,7 @@ const useAuthStore = create<AuthState>()(
         username:      state.username,
         is_superuser:  state.is_superuser,
         isLoggedIn:    state.isLoggedIn,
+        user_id:       state.user_id,           // ← ADDED here too
       }),
     }
   )
@@ -73,7 +75,6 @@ const useAuthStore = create<AuthState>()(
 
 export default useAuthStore
 
-// Named selectors for use outside React (e.g. in services or axios interceptor)
 export const getAuthState   = () => useAuthStore.getState()
 export const getIsSuperUser = () => useAuthStore.getState().is_superuser
 export const getIsLoggedIn  = () => useAuthStore.getState().isLoggedIn

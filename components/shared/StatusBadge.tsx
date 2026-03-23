@@ -3,12 +3,6 @@ import { Badge }        from '@/components/ui/badge'
 import { cn }           from '@/lib/utils'
 import type { VishiStatus, LedgerStatus } from '@/models/vishi'
 
-/**
- * VishiDisplayStatus extends the backend's VishiStatus with computed
- * alert states that are derived on the frontend from date comparisons.
- *
- * Priority when computing: deleted > release_pending > draw_pending > base status
- */
 export type VishiDisplayStatus =
   | VishiStatus
   | 'draw_pending'
@@ -16,30 +10,20 @@ export type VishiDisplayStatus =
   | 'deleted'
 
 const VISHI_MAP: Record<VishiDisplayStatus, { label: string; cls: string }> = {
-  upcoming:        { label: '○ Upcoming',        cls: 'bg-slate-100 text-slate-600  dark:bg-slate-800    dark:text-slate-400'  },
-  active:          { label: '● Active',           cls: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'  },
-  draw_pending:    { label: '🔔 Draw Pending',    cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'  },
-  release_pending: { label: '💰 Release Pending', cls: 'bg-blue-100  text-blue-800  dark:bg-blue-900/30  dark:text-blue-400'   },
-  completed:       { label: '✓ Completed',        cls: 'bg-teal-100  text-teal-700  dark:bg-teal-900/30  dark:text-teal-400'   },
-  deleted:         { label: '🗑 Deleted',         cls: 'bg-red-100   text-red-700   dark:bg-red-900/30   dark:text-red-400'    },
+  upcoming:        { label: 'Upcoming',         cls: 'bg-slate-100  text-slate-600  dark:bg-slate-800/60  dark:text-slate-300'  },
+  active:          { label: '● Active',          cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  draw_pending:    { label: '⚡ Draw Due',        cls: 'bg-amber-100  text-amber-800  dark:bg-amber-900/30  dark:text-amber-400'  },
+  release_pending: { label: '↑ Release',         cls: 'bg-sky-100    text-sky-800    dark:bg-sky-900/30    dark:text-sky-400'    },
+  completed:       { label: '✓ Completed',       cls: 'bg-teal-100   text-teal-700   dark:bg-teal-900/30   dark:text-teal-400'   },
+  deleted:         { label: 'Deleted',           cls: 'bg-rose-100   text-rose-700   dark:bg-rose-900/30   dark:text-rose-400'   },
 }
 
 const LEDGER_MAP: Record<LedgerStatus, { label: string; cls: string }> = {
-  paid:     { label: 'Paid',     cls: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
-  due:      { label: 'Due',      cls: 'bg-red-100   text-red-800   dark:bg-red-900/30   dark:text-red-400'   },
-  overpaid: { label: 'Overpaid', cls: 'bg-blue-100  text-blue-800  dark:bg-blue-900/30  dark:text-blue-400'  },
+  paid:     { label: 'Paid',     cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  due:      { label: 'Due',      cls: 'bg-rose-100    text-rose-800   dark:bg-rose-900/30    dark:text-rose-400'    },
+  overpaid: { label: 'Overpaid', cls: 'bg-sky-100     text-sky-800    dark:bg-sky-900/30     dark:text-sky-400'     },
 }
 
-/**
- * Call this in your page/card component to resolve the correct display badge.
- *
- * @example
- * const display = getVishiDisplayStatus(vishi.status, {
- *   is_deleted:      vishi.is_deleted,
- *   release_pending: today >= releaseDate && !latestDrawRecord?.is_released,
- *   draw_overdue:    today >= drawDate && !hasDrawForCurrentCycle,
- * })
- */
 export function getVishiDisplayStatus(
   status:   VishiStatus,
   options?: {
@@ -56,8 +40,6 @@ export function getVishiDisplayStatus(
   return status
 }
 
-// ─── Badge Components ─────────────────────────────────────────────────────────
-
 export function VishiStatusBadge({
   status, className,
 }: {
@@ -66,7 +48,13 @@ export function VishiStatusBadge({
 }) {
   const { label, cls } = VISHI_MAP[status]
   return (
-    <Badge variant="outline" className={cn('border-0 font-medium text-xs', cls, className)}>
+    <Badge
+      variant="outline"
+      className={cn(
+        'border-0 font-semibold text-[11px] px-2 py-0.5 rounded-full tracking-wide',
+        cls, className
+      )}
+    >
       {label}
     </Badge>
   )
@@ -80,7 +68,13 @@ export function LedgerStatusBadge({
 }) {
   const { label, cls } = LEDGER_MAP[status]
   return (
-    <Badge variant="outline" className={cn('border-0 font-medium text-xs', cls, className)}>
+    <Badge
+      variant="outline"
+      className={cn(
+        'border-0 font-semibold text-[11px] px-2 py-0.5 rounded-full',
+        cls, className
+      )}
+    >
       {label}
     </Badge>
   )
@@ -96,30 +90,42 @@ export function ParticipantStatusBadge({
 }) {
   if (!is_active) {
     return (
-      <Badge variant="outline" className={cn(
-        'border-0 font-medium text-xs bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
-        className
-      )}>
+      <Badge
+        variant="outline"
+        className={cn(
+          'border-0 font-semibold text-[11px] px-2 py-0.5 rounded-full',
+          'bg-slate-100 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400',
+          className
+        )}
+      >
         Removed
       </Badge>
     )
   }
   if (is_drawn) {
     return (
-      <Badge variant="outline" className={cn(
-        'border-0 font-medium text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-        className
-      )}>
-        {was_fixed ? '🔒 Fixed' : 'Drawn'}
+      <Badge
+        variant="outline"
+        className={cn(
+          'border-0 font-semibold text-[11px] px-2 py-0.5 rounded-full',
+          'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
+          className
+        )}
+      >
+        {was_fixed ? '🔒 Fixed' : '★ Won'}
       </Badge>
     )
   }
   return (
-    <Badge variant="outline" className={cn(
-      'border-0 font-medium text-xs bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400',
-      className
-    )}>
-      Remaining
+    <Badge
+      variant="outline"
+      className={cn(
+        'border-0 font-semibold text-[11px] px-2 py-0.5 rounded-full',
+        'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400',
+        className
+      )}
+    >
+      In Pool
     </Badge>
   )
 }

@@ -8,8 +8,8 @@ const withSerwist = withSerwistInit({
 })
 
 const nextConfig: NextConfig = {
-  output:            'standalone',   // ✅ REQUIRED for Docker multi-stage build
-  reactStrictMode:   true,
+  output:            'standalone',
+  reactStrictMode:   process.env.NODE_ENV !== 'development', // ← off in dev, on in prod
   turbopack:         {},
   transpilePackages: ['@tanstack/react-query'],
 }

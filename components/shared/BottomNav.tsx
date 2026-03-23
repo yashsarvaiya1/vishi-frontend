@@ -11,15 +11,12 @@ import useAuthStore from '@/stores/authStore'
 import { cn } from '@/lib/utils'
 
 const USER_TABS = [
-  { href: '/',                   label: 'Home',      icon: Home            },
-  { href: '/common/my-vishis',   label: 'My Vishis', icon: Wallet          },
-  { href: '/common/my-payments', label: 'Payments',  icon: IndianRupee     },
-  { href: '/common/profile',     label: 'Profile',   icon: User            },
+  { href: '/',                   label: 'Home',      icon: Home        },
+  { href: '/common/my-vishis',   label: 'My Vishis', icon: Wallet      },
+  { href: '/common/my-payments', label: 'Payments',  icon: IndianRupee },
+  { href: '/common/profile',     label: 'Profile',   icon: User        },
 ]
 
-// Flow §2 — Admin has: Dashboard · Vishis · Collect · Users · Me
-// "Me" resolves to /common/profile which surfaces My Vishis + My Payments
-// links for admin's own participation view (flow §2 "MY ACCOUNT" group).
 const ADMIN_TABS = [
   { href: '/',               label: 'Dashboard', icon: Home            },
   { href: '/admin/vishis',   label: 'Vishis',    icon: LayoutDashboard },
@@ -40,7 +37,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/90 backdrop-blur-md supports-backdrop-filter:bg-background/70"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       <div className="flex h-16 items-stretch max-w-lg mx-auto">
@@ -51,19 +48,21 @@ export default function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 flex-1 min-w-0 transition-colors',
+                'relative flex flex-col items-center justify-center gap-1 flex-1 min-w-0 transition-colors duration-150',
                 active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon
-                className={cn(
-                  'h-5 w-5 shrink-0 transition-transform duration-150',
-                  active && 'scale-110'
-                )}
-              />
+              {/* Active indicator pill */}
+              {active && (
+                <span className="absolute top-1.5 left-1/2 -translate-x-1/2 h-0.5 w-5 rounded-full bg-primary" />
+              )}
+              <Icon className={cn(
+                'h-5 w-5 shrink-0 transition-all duration-150',
+                active ? 'scale-110' : 'scale-100'
+              )} />
               <span className={cn(
                 'text-[10px] leading-none',
-                active ? 'font-semibold' : 'font-medium'
+                active ? 'font-bold' : 'font-medium'
               )}>
                 {label}
               </span>

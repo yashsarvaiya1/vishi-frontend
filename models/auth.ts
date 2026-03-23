@@ -27,15 +27,15 @@ export interface CheckNumberResponse {
 // POST /api/auth/set-password/ → success
 export interface AuthResponse {
   detail:       string
+  id:           number         // ← ADDED
   username:     string | null
   is_superuser: boolean
 }
 
-
 // POST /api/auth/login/ → two possible shapes
 export type LoginResponse =
   | { password_set: false }
-  | { detail: string; username: string | null; is_superuser: boolean }
+  | { detail: string; id: number; username: string | null; is_superuser: boolean }  // ← ADDED id
 
 // Shared error shape for all auth endpoints
 export interface AuthErrorResponse {

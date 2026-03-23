@@ -17,7 +17,24 @@ export const VISHI_KEYS = {
   all:         ['vishis'] as const,
   list:        (p: object) => ['vishis', 'list', p] as const,
   detail:      (id: number) => ['vishis', id] as const,
-  skipRecords: (id: number) => ['vishis', id, 'skip-records'] as const,  // ← ADDED M2
+  skipRecords: (id: number) => ['vishis', id, 'skip-records'] as const,
+}
+
+// ─── Extracts the most useful error message from an API error ─────────────────
+// Backend can return: { detail: "..." } | { field: ["..."] } | { non_field_errors: ["..."] }
+function extractError(err: any, fallback: string): string {
+  const data = err?.response?.data
+  if (!data) return fallback
+  if (typeof data === 'string') return data
+  if (data.detail) return data.detail
+  if (data.non_field_errors?.length) return data.non_field_errors[0]
+  // First field error
+  const firstKey = Object.keys(data)[0]
+  if (firstKey) {
+    const val = data[firstKey]
+    return Array.isArray(val) ? `${firstKey}: ${val[0]}` : String(val)
+  }
+  return fallback
 }
 
 
@@ -44,9 +61,9 @@ export function useCreateVishi() {
     mutationFn: (data: CreateVishiPayload) => vishiService.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: VISHI_KEYS.all })
+      toast.success('Vishi created.')
     },
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.detail ?? 'Failed to create vishi.'),
+    onError: (err: any) => toast.error(extractError(err, 'Failed to create vishi.')),
   })
 }
 
@@ -60,8 +77,7 @@ export function useUpdateVishi(id: number) {
       qc.invalidateQueries({ queryKey: VISHI_KEYS.all })
       toast.success('Vishi updated.')
     },
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.detail ?? 'Failed to update vishi.'),
+    onError: (err: any) => toast.error(extractError(err, 'Failed to update vishi.')),
   })
 }
 
@@ -74,14 +90,11 @@ export function useDeleteVishi(id: number) {
       qc.invalidateQueries({ queryKey: VISHI_KEYS.all })
       toast.success('Vishi deleted.')
     },
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.detail ?? 'Failed to delete vishi.'),
+    onError: (err: any) => toast.error(extractError(err, 'Failed to delete vishi.')),
   })
 }
 
 
-// ← FIXED: restored — backend DOES have POST /api/vishis/{id}/activate/
-// Transitions status: upcoming → active. Required before draw can happen.
 export function useActivateVishi(id: number) {
   const qc = useQueryClient()
   return useMutation({
@@ -91,13 +104,11 @@ export function useActivateVishi(id: number) {
       qc.invalidateQueries({ queryKey: VISHI_KEYS.all })
       toast.success('Vishi activated.')
     },
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.detail ?? 'Failed to activate vishi.'),
+    onError: (err: any) => toast.error(extractError(err, 'Failed to activate vishi.')),
   })
 }
 
 
-// ← FIXED: accepts optional DrawPayload so caller can pass fix_participant_id
 export function useDrawVishi(id: number) {
   const qc = useQueryClient()
   return useMutation({
@@ -105,10 +116,9 @@ export function useDrawVishi(id: number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(id) })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
-      toast.success('Draw complete.')
     },
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.detail ?? 'Draw failed.'),
+    // ← FIXED: richer error — backend returns "Draw date is 2025-06-01. Cannot draw before that date."
+    onError: (err: any) => toast.error(extractError(err, 'Draw failed.')),
   })
 }
 
@@ -122,8 +132,7 @@ export function useReleaseVishi(id: number) {
       qc.invalidateQueries({ queryKey: ['dashboard'] })
       toast.success('Funds released.')
     },
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.detail ?? 'Release failed.'),
+    onError: (err: any) => toast.error(extractError(err, 'Release failed.')),
   })
 }
 
@@ -134,17 +143,14 @@ export function useSkipCycle(id: number) {
     mutationFn: (payload?: SkipCyclePayload) => vishiService.skipCycle(id, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(id) })
-      // Skip records list also changes
       qc.invalidateQueries({ queryKey: VISHI_KEYS.skipRecords(id) })
       toast.success('Cycle skipped.')
     },
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.detail ?? 'Failed to skip cycle.'),
+    onError: (err: any) => toast.error(extractError(err, 'Failed to skip cycle.')),
   })
 }
 
 
-// ← FIXED: accepts number | null — null clears the fix draw
 export function useSetFixDraw(id: number) {
   const qc = useQueryClient()
   return useMutation({
@@ -154,13 +160,11 @@ export function useSetFixDraw(id: number) {
       qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(id) })
       toast.success(participant_id ? 'Fix draw set.' : 'Fix draw cleared.')
     },
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.detail ?? 'Failed to set fix draw.'),
+    onError: (err: any) => toast.error(extractError(err, 'Failed to set fix draw.')),
   })
 }
 
 
-// M2 — skip audit trail for Draw History tab inside vishi detail
 export function useSkipRecords(vishiId: number) {
   return useQuery({
     queryKey: VISHI_KEYS.skipRecords(vishiId),
@@ -168,3 +172,20 @@ export function useSkipRecords(vishiId: number) {
     enabled:  !!vishiId,
   })
 }
+
+export function useRestoreVishi(id: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => vishiService.restoreVishi(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: VISHI_KEYS.all })
+      qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(id) })
+      qc.invalidateQueries({ queryKey: ['payments', 'summary'] })  // ← ADDED: refreshes collect page
+      qc.invalidateQueries({ queryKey: ['dashboard'] })             // ← ADDED: refreshes admin home
+      toast.success('Vishi restored.')
+    },
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.detail ?? 'Failed to restore vishi.'),
+  })
+}
+

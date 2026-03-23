@@ -3,26 +3,28 @@
 
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { Button }    from '@/components/ui/button'
+import { cn }        from '@/lib/utils'
 
 interface BackButtonProps {
-  href?:      string   // if omitted → router.back()
+  href?:      string
   className?: string
 }
 
 export default function BackButton({ href, className }: BackButtonProps) {
   const router = useRouter()
-
   return (
     <Button
       variant="ghost"
       size="icon"
       onClick={() => href ? router.push(href) : router.back()}
-      className={cn('-ml-2 h-9 w-9 shrink-0', className)}
+      className={cn(
+        '-ml-2 h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors',
+        className
+      )}
       aria-label="Go back"
     >
-      <ArrowLeft className="h-5 w-5" />
+      <ArrowLeft className="h-4.5 w-4.5" />
     </Button>
   )
 }

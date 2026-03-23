@@ -5,23 +5,22 @@ import { useRouter }   from 'next/navigation'
 import {
   AlertTriangle, Clock, CreditCard,
   Users, TrendingUp, Wallet, ChevronRight,
+  Zap,
 } from 'lucide-react'
-import { Card }     from '@/components/ui/card'
-import { Button }   from '@/components/ui/button'
-import { Badge }    from '@/components/ui/badge'
-import { cn }       from '@/lib/utils'
-import useAuthStore from '@/stores/authStore'
-// FIXED: correct field names from AdminDashboard model
+import { Card, CardContent } from '@/components/ui/card'
+import { Button }            from '@/components/ui/button'
+import { Badge }             from '@/components/ui/badge'
+import { cn }                from '@/lib/utils'
+import useAuthStore          from '@/stores/authStore'
 import type { AdminDashboard, AlertType, ActionAlert, UpcomingEvent } from '@/models/dashboard'
 
-
 interface Props { data: AdminDashboard }
-
 
 type AlertCfg = {
   icon:     React.ElementType
   color:    string
   bg:       string
+  border:   string
   btnLabel: string
   href:     (vishiId: number) => string
 }
@@ -31,29 +30,32 @@ const ALERT_CFG: Record<AlertType, AlertCfg> = {
     icon:     AlertTriangle,
     color:    'text-amber-600 dark:text-amber-400',
     bg:       'bg-amber-50 dark:bg-amber-900/20',
+    border:   'border-amber-200 dark:border-amber-800',
     btnLabel: 'Draw Now',
     href:     (id) => `/admin/vishis/${id}`,
   },
   release_pending: {
     icon:     Clock,
-    color:    'text-blue-600 dark:text-blue-400',
-    bg:       'bg-blue-50 dark:bg-blue-900/20',
+    color:    'text-sky-600 dark:text-sky-400',
+    bg:       'bg-sky-50 dark:bg-sky-900/20',
+    border:   'border-sky-200 dark:border-sky-800',
     btnLabel: 'Release',
     href:     (id) => `/admin/vishis/${id}`,
   },
   payments_pending: {
     icon:     CreditCard,
-    color:    'text-red-600 dark:text-red-400',
-    bg:       'bg-red-50 dark:bg-red-900/20',
+    color:    'text-rose-600 dark:text-rose-400',
+    bg:       'bg-rose-50 dark:bg-rose-900/20',
+    border:   'border-rose-200 dark:border-rose-800',
     btnLabel: 'Collect',
     href:     (id) => `/admin/vishis/${id}`,
   },
 }
 
-const EVENT_LABEL: Record<UpcomingEvent['event_type'], string> = {
-  draw:       '🎰 Draw Day',
-  collection: '💰 Collection Day',
-  release:    '📤 Release Day',
+const EVENT_CFG: Record<UpcomingEvent['event_type'], { emoji: string; label: string; cls: string }> = {
+  draw:       { emoji: '🎰', label: 'Draw Day',       cls: 'text-amber-600 dark:text-amber-400'   },
+  collection: { emoji: '💰', label: 'Collection Day', cls: 'text-emerald-600 dark:text-emerald-400' },
+  release:    { emoji: '📤', label: 'Release Day',    cls: 'text-sky-600 dark:text-sky-400'        },
 }
 
 function getGreeting() {
@@ -63,65 +65,71 @@ function getGreeting() {
   return 'Good evening'
 }
 
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
-
 export default function AdminHome({ data }: Props) {
   const router   = useRouter()
   const username = useAuthStore((s) => s.username)
   const mobile   = useAuthStore((s) => s.mobile_number)
 
   const today = new Date().toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric',
+    weekday: 'short', day: 'numeric', month: 'short',
   })
+
+  const STAT_CARDS = [
+    { label: 'Active',    value: data.active_vishis_count,   icon: TrendingUp, iconCls: 'text-emerald-600', bg: 'from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20' },
+    { label: 'Upcoming',  value: data.upcoming_vishis_count, icon: Clock,      iconCls: 'text-amber-500',   bg: 'from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20' },
+    { label: 'Members',   value: data.total_members,         icon: Users,      iconCls: 'text-sky-500',     bg: 'from-sky-50 to-blue-50 dark:from-sky-900/20 dark:to-blue-900/20'         },
+    { label: 'Users',     value: data.total_users,           icon: Wallet,     iconCls: 'text-primary',     bg: 'from-primary/5 to-violet-50 dark:from-primary/10 dark:to-violet-900/20'  },
+  ]
 
   return (
     <div className="space-y-6">
 
       {/* Greeting */}
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight">
-            {getGreeting()}, {username || mobile} 👋
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{today}</p>
-        </div>
+      <div>
+        <p className="text-xs text-muted-foreground font-medium">{today}</p>
+        <h2 className="text-2xl font-black tracking-tight mt-0.5">
+          {getGreeting()}, {username || mobile} 👋
+        </h2>
       </div>
 
-      {/* 4 Stat cards */}
+      {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3">
-        {/* FIXED: active_vishis_count (not active_vishis) */}
-        <StatCard
-          label="Active Vishis"  value={data.active_vishis_count}
-          icon={TrendingUp}      iconCls="text-green-600" bg="bg-green-500/5"
-        />
-        {/* FIXED: upcoming_vishis_count (not upcoming_vishis) */}
-        <StatCard
-          label="Upcoming"       value={data.upcoming_vishis_count}
-          icon={Clock}           iconCls="text-amber-500" bg="bg-amber-500/5"
-        />
-        <StatCard
-          label="Total Members"  value={data.total_members}
-          icon={Users}           iconCls="text-blue-500"  bg="bg-blue-500/5"
-        />
-        <StatCard
-          label="Total Users"    value={data.total_users}
-          icon={Wallet}          iconCls="text-primary"   bg="bg-primary/5"
-        />
+        {STAT_CARDS.map(({ label, value, icon: Icon, iconCls, bg }) => (
+          <div
+            key={label}
+            className={cn(
+              'rounded-2xl px-4 py-4 space-y-3 bg-linear-to-br border border-transparent',
+              bg
+            )}
+          >
+            <div className={cn('h-8 w-8 rounded-xl bg-background/60 flex items-center justify-center', iconCls)}>
+              <Icon className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-3xl font-black leading-none">{value}</p>
+              <p className="text-xs text-muted-foreground font-semibold mt-1">{label}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Action Required */}
-      {/* FIXED: action_required (not action_alerts) */}
       {data.action_required.length > 0 && (
-        <section className="space-y-2">
-          <SectionLabel>🔔 Action Required</SectionLabel>
+        <section className="space-y-2.5">
+          <div className="flex items-center gap-2">
+            <Zap className="h-3.5 w-3.5 text-amber-500" />
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              Action Required
+            </h3>
+            <span className="h-5 w-5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">
+              {data.action_required.length}
+            </span>
+          </div>
           <div className="space-y-2">
             {data.action_required.map((alert, i) => (
               <AlertRow
                 key={i}
                 alert={alert}
-                // FIXED: alert.action (not alert.type)
                 onAction={() => router.push(ALERT_CFG[alert.action].href(alert.vishi_id))}
               />
             ))}
@@ -130,11 +138,12 @@ export default function AdminHome({ data }: Props) {
       )}
 
       {/* Upcoming This Week */}
-      {/* FIXED: upcoming_this_week (not upcoming_events) */}
       {data.upcoming_this_week.length > 0 && (
-        <section className="space-y-2">
-          <SectionLabel>📅 Upcoming This Week</SectionLabel>
-          <Card className="rounded-xl overflow-hidden divide-y">
+        <section className="space-y-2.5">
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <span>📅</span> Upcoming This Week
+          </h3>
+          <Card className="rounded-2xl overflow-hidden divide-y">
             {data.upcoming_this_week.map((ev, i) => (
               <EventRow
                 key={i}
@@ -145,52 +154,30 @@ export default function AdminHome({ data }: Props) {
           </Card>
         </section>
       )}
+
     </div>
   )
 }
 
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-
-function StatCard({
-  label, value, icon: Icon, iconCls, bg,
-}: {
-  label: string; value: number
-  icon: React.ElementType; iconCls: string; bg: string
-}) {
-  return (
-    <div className={cn('rounded-xl px-4 py-4 space-y-2', bg)}>
-      <Icon className={cn('h-4 w-4', iconCls)} />
-      <p className="text-2xl font-bold leading-none">{value}</p>
-      <p className="text-xs text-muted-foreground font-medium">{label}</p>
-    </div>
-  )
-}
-
-
-function AlertRow({
-  alert, onAction,
-}: {
-  alert:    ActionAlert
-  onAction: () => void
-}) {
-  // FIXED: alert.action (not alert.type)
+function AlertRow({ alert, onAction }: { alert: ActionAlert; onAction: () => void }) {
   const cfg  = ALERT_CFG[alert.action]
   const Icon = cfg.icon
-
   return (
-    <div className={cn('flex items-center gap-3 rounded-xl px-4 py-3', cfg.bg)}>
-      <Icon className={cn('h-4 w-4 shrink-0', cfg.color)} />
-      <p className="text-sm flex-1 min-w-0 leading-snug">
-        <span className="font-semibold">{alert.vishi_name}</span>
-        {' — '}
-        <span className="text-muted-foreground text-xs">{alert.detail}</span>
-      </p>
+    <div className={cn(
+      'flex items-center gap-3 rounded-2xl px-4 py-3 border',
+      cfg.bg, cfg.border
+    )}>
+      <div className={cn('h-8 w-8 rounded-xl bg-background/60 flex items-center justify-center shrink-0', cfg.color)}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold truncate">{alert.vishi_name}</p>
+        <p className="text-xs text-muted-foreground">{alert.detail}</p>
+      </div>
       <Button
         size="sm"
         variant="outline"
-        className="h-7 text-xs shrink-0 px-2.5"
+        className="h-8 text-xs shrink-0 px-3 rounded-xl bg-background/80"
         onClick={onAction}
       >
         {cfg.btnLabel}
@@ -199,41 +186,23 @@ function AlertRow({
   )
 }
 
-
-function EventRow({
-  event, onClick,
-}: {
-  event:   UpcomingEvent
-  onClick: () => void
-}) {
-  const dateStr = new Date(event.date).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short',
-  })
-
+function EventRow({ event, onClick }: { event: UpcomingEvent; onClick: () => void }) {
+  const cfg     = EVENT_CFG[event.event_type]
+  const dateStr = new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
   return (
     <div
-      className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors"
+      className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition-colors"
       onClick={onClick}
     >
-      <div className="min-w-0">
-        <p className="text-sm font-medium truncate">{event.vishi_name}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {EVENT_LABEL[event.event_type]}
-        </p>
+      <span className="text-base shrink-0">{cfg.emoji}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold truncate">{event.vishi_name}</p>
+        <p className={cn('text-xs font-medium', cfg.cls)}>{cfg.label}</p>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
-        <Badge variant="outline" className="text-xs font-medium">{dateStr}</Badge>
+        <Badge variant="outline" className="text-xs font-semibold rounded-full">{dateStr}</Badge>
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
       </div>
     </div>
-  )
-}
-
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-      {children}
-    </h3>
   )
 }
