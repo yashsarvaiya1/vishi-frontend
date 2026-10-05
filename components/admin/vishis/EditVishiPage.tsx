@@ -14,6 +14,7 @@ import PageHeader     from '@/components/shared/PageHeader'
 import LoadingSpinner from '@/components/shared/LoadingSpinner'
 import ConfirmDialog  from '@/components/shared/ConfirmDialog'
 import { formatFrequency } from '@/lib/utils'
+import { getVishiScheduleError } from '@/lib/vishiSchedule'
 import type { VishiAdmin } from '@/models/vishi'
 import React from 'react'
 
@@ -49,13 +50,17 @@ export default function EditVishiPage({ id }: { id: number }) {
   const isActive   = vishi?.status === 'active'
   const isUpcoming = vishi?.status === 'upcoming'
   const isDeleted  = vishi?.is_deleted ?? false
+  const scheduleLocked = vishi?.schedule_locked ?? !isUpcoming
+  const dayError = !scheduleLocked && vishi
+    ? getVishiScheduleError(vishi.frequency, Number(drawDay), Number(collectionDay), Number(releaseDay), startDate)
+    : null
   const amountValid = !isNaN(Number(amount)) && Number(amount) > 0
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || (!isActive && !amountValid)) return
+    if (!name.trim() || isDeleted || (!scheduleLocked && (!amountValid || dayError))) return
     update.mutate(
-      isActive
+      scheduleLocked
         ? { name: name.trim() }
         : {
             name: name.trim(), amount: amount.trim(),
@@ -129,9 +134,9 @@ export default function EditVishiPage({ id }: { id: number }) {
             <CardContent className="px-5 py-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Amount</p>
-                {isActive && !isDeleted && (
+                {scheduleLocked && !isDeleted && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-                    <Lock className="h-3 w-3" /> Locked on active vishi
+                    <Lock className="h-3 w-3" /> Locked after start or payment history
                   </div>
                 )}
               </div>
@@ -140,10 +145,10 @@ export default function EditVishiPage({ id }: { id: number }) {
                 <Input
                   type="number" inputMode="numeric" min="1"
                   value={amount} onChange={(e) => setAmount(e.target.value)}
-                  disabled={isActive || isDeleted}
-                  className={`rounded-xl h-10 ${(isActive || isDeleted) ? 'opacity-60' : ''}`}
+                  disabled={scheduleLocked || isDeleted}
+                  className={`rounded-xl h-10 ${(scheduleLocked || isDeleted) ? 'opacity-60' : ''}`}
                 />
-                {!isActive && !isDeleted && amount && !amountValid && (
+                {!scheduleLocked && !isDeleted && amount && !amountValid && (
                   <p className="text-xs text-destructive">Amount must be greater than 0.</p>
                 )}
               </div>
@@ -151,7 +156,7 @@ export default function EditVishiPage({ id }: { id: number }) {
           </Card>
 
           {/* Upcoming-only cycle settings */}
-          {isUpcoming && !isDeleted && (
+          {!scheduleLocked && !isDeleted && (
             <Card className="rounded-2xl">
               <CardContent className="px-5 py-5 space-y-4">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Cycle Settings</p>
@@ -167,23 +172,24 @@ export default function EditVishiPage({ id }: { id: number }) {
                   ].map(({ label, value, set }) => (
                     <div key={label} className="space-y-1.5">
                       <Label className="text-xs">{label}</Label>
-                      <Input type="number" inputMode="numeric" min={1} max={28}
+                      <Input type="number" inputMode="numeric" min={1} max={vishi.frequency === 'weekly' ? 7 : vishi.frequency === 'half_monthly' ? 14 : 28}
                         value={value} onChange={(e) => set(e.target.value)} className="rounded-xl h-10" />
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground">Draw &lt; Collection &lt; Release</p>
+                <p className="text-xs text-muted-foreground">Start date must be earliest. Collection can be before or after draw; both must be before release.</p>
+                {dayError && <p role="alert" className="text-xs text-destructive">{dayError}</p>}
               </CardContent>
             </Card>
           )}
 
           {/* Locked fields for active */}
-          {isActive && (
+          {scheduleLocked && !isDeleted && (
             <Card className="rounded-2xl bg-muted/30 border-dashed">
               <CardContent className="px-5 py-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground font-semibold">Locked once active</p>
+                  <p className="text-xs text-muted-foreground font-semibold">Locked after start or payment history</p>
                 </div>
                 <div className="grid grid-cols-2 gap-y-2 text-xs">
                   {[
@@ -205,7 +211,7 @@ export default function EditVishiPage({ id }: { id: number }) {
 
           {!isDeleted && (
             <Button type="submit" className="w-full h-12 rounded-2xl font-bold text-base"
-              disabled={update.isPending || !name.trim() || (!isActive && !amountValid)}>
+              disabled={update.isPending || !name.trim() || (!scheduleLocked && (!amountValid || !!dayError))}>
               {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
             </Button>
           )}

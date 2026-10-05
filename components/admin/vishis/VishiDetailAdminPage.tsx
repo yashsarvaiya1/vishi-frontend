@@ -1,6 +1,8 @@
 // components/admin/vishis/VishiDetailAdminPage.tsx
 'use client'
 
+import PaymentSettlementPreview from '@/components/shared/PaymentSettlementPreview'
+
 import { useState }                from 'react'
 import { useRouter }               from 'next/navigation'
 import {
@@ -159,7 +161,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
             <div className="grid grid-cols-3 gap-2 text-center mb-4">
               {[
                 { label: 'Draw',       value: formatDate(vishi.current_draw_date)       },
-                { label: 'Renewal',    value: formatDate(vishi.current_collection_date) },
+                { label: 'Collection',    value: formatDate(vishi.current_collection_date) },
                 { label: 'Release',    value: formatDate(vishi.current_release_date)    },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-background/60 rounded-xl py-2.5 px-1">
@@ -964,6 +966,8 @@ function CollectFromLedgerDialog({ vishiId, ledger, onClose }: {
               </div>
             )}
           </div>
+          <PaymentSettlementPreview ledger={ledger} amount={Number(amount)} />
+
           {amount && Number(amount) > 0 && (
             <div className="rounded-xl border px-4 py-3 text-xs">
               <div className="flex justify-between items-center">

@@ -199,6 +199,16 @@ function EntryRow({ entry }: { entry: PaymentEntry }) {
         <p className="text-xs font-semibold">
           {isCharge ? 'Charge' : 'Payment'} · Cycle {entry.cycle_number}
         </p>
+        {!isCharge && entry.settlement && (
+          <p className="text-xs text-muted-foreground">
+            {[
+              ['Late payment', entry.settlement.late_amount],
+              ['Current dues', entry.settlement.due_amount],
+              ['Advance', entry.settlement.advance_amount],
+            ].filter(([, value]) => Number(value) > 0)
+              .map(([label, value]) => `${label}: ₹${Number(value).toLocaleString('en-IN')}`).join(' · ')}
+          </p>
+        )}
         {entry.note && <p className="text-xs text-muted-foreground truncate">{entry.note}</p>}
         <p className="text-xs text-muted-foreground">{formatDate(entry.created_at)}</p>
       </div>

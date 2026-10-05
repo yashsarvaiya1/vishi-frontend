@@ -12,6 +12,7 @@ export interface PaymentEntry {
   note:         string
   recorded_by:  number | null
   created_at:   string
+  settlement?:  { late_amount: string; due_amount: string; advance_amount: string } | null
 }
 
 export interface PaginatedEntries {
@@ -28,6 +29,7 @@ export interface CollectionLedger {
   vishi:            number
   participant:      number
   balance:          string
+  late_amount?:     string
   status:           LedgerStatus
   is_active:        boolean
   last_charged_at:  string | null

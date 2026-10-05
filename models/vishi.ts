@@ -91,6 +91,7 @@ interface VishiBase {
   start_date:              string
   finish_date:             string
   status:                  VishiStatus
+  next_renewal_date?:       string | null
   current_cycle:           number
   collection_cycle:        number
   total_cycles:            number
@@ -102,6 +103,7 @@ export interface VishiPublic extends VishiBase {
 }
 
 export interface VishiAdmin extends VishiBase {
+  schedule_locked?:        boolean
   draw_day:               number
   collection_day:         number
   release_day:            number

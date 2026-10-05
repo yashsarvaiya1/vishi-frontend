@@ -129,7 +129,7 @@ export default function MyVishiDetailPage({ id }: { id: number }) {
             <div className="grid grid-cols-2 gap-y-3">
               {[
                 ['Draw',       vishi.current_draw_date],
-                ['Renewal',    vishi.current_collection_date],
+                ['Collection',    vishi.current_collection_date],
                 ['Release',    vishi.current_release_date],
                 ['Start',      vishi.start_date],
                 ['Finish',     vishi.finish_date],

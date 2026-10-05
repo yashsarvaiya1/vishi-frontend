@@ -20,6 +20,7 @@ import { toast }      from 'sonner'
 import AdminRoute     from '@/components/shared/AdminRoute'
 import PageHeader     from '@/components/shared/PageHeader'
 import type { VishiFrequency } from '@/models/vishi'
+import { getVishiScheduleError } from '@/lib/vishiSchedule'
 
 interface ParticipantSlot {
   user_id:      number
@@ -53,9 +54,7 @@ export default function CreateVishiPage() {
   const dayError: string | null = (() => {
     const d = Number(drawDay), c = Number(collectionDay), r = Number(releaseDay)
     if (!drawDay || !collectionDay || !releaseDay) return null
-    if (d >= c) return 'Draw day must be before Collection day.'
-    if (c >= r) return 'Collection day must be before Release day.'
-    return null
+    return getVishiScheduleError(frequency, d, c, r, startDate)
   })()
 
   const addSlot = () => {
@@ -172,7 +171,7 @@ export default function CreateVishiPage() {
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Day Settings</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Payments start on the start date and renew at the selected frequency. Draw &lt; Collection &lt; Release sets event days. Monthly+: day of month (1–28). Weekly/Half-monthly: offset from start.
+                  Payments are due from the start date and renew at the selected frequency. Collection is the payment deadline and can be before or after the draw. Start date must be earliest; draw and collection must be before release. Monthly+: days 1–28. Weekly: offsets 1–7; half-monthly: offsets 1–14.
                 </p>
               </div>
 
@@ -185,7 +184,7 @@ export default function CreateVishiPage() {
                   <div key={label} className="space-y-1.5">
                     <Label className="text-xs">{label}</Label>
                     <Input
-                      type="number" inputMode="numeric" placeholder={placeholder} min={1} max={28}
+                      type="number" inputMode="numeric" placeholder={placeholder} min={1} max={frequency === 'weekly' ? 7 : frequency === 'half_monthly' ? 14 : 28}
                       value={value} onChange={(e) => set(e.target.value)}
                       className="rounded-xl h-10"
                     />

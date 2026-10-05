@@ -1,6 +1,8 @@
 // components/admin/collect/CollectPaymentsPage.tsx
 'use client'
 
+import PaymentSettlementPreview from '@/components/shared/PaymentSettlementPreview'
+
 import { useState, useMemo }           from 'react'
 import { usePaymentsSummary }          from '@/hooks/useDashboard'
 import { useRecordPayment }            from '@/hooks/useLedgers'
@@ -363,6 +365,8 @@ function QuickRecord({ groups }: { groups: VishiPaymentGroup[] }) {
                 />
               </div>
 
+              {selectedLedger && <PaymentSettlementPreview ledger={selectedLedger} amount={Number(amount)} />}
+
               {/* Balance preview */}
               {amount && Number(amount) > 0 && newBalance !== null && (
                 <div className="rounded-xl border px-4 py-3 text-xs space-y-2">
@@ -567,6 +571,8 @@ function RecordPaymentDialog({ vishiId, ledger, onClose }: {
               </div>
             )}
           </div>
+
+          <PaymentSettlementPreview ledger={ledger} amount={Number(amount)} />
 
           {amount && Number(amount) > 0 && (
             <div className="rounded-xl border px-4 py-3 text-xs space-y-1.5">
