@@ -13,9 +13,11 @@ import AdminRoute     from '@/components/shared/AdminRoute'
 import PageHeader     from '@/components/shared/PageHeader'
 import LoadingSpinner from '@/components/shared/LoadingSpinner'
 import ConfirmDialog  from '@/components/shared/ConfirmDialog'
-import { formatFrequency } from '@/lib/utils'
-import { getVishiScheduleError } from '@/lib/vishiSchedule'
-import type { VishiAdmin } from '@/models/vishi'
+import { formatFrequency, formatDate } from '@/lib/utils'
+import { getVishiScheduleError, getCycleEnd, shiftDate } from '@/lib/vishiSchedule'
+import DatePicker from '@/components/shared/DatePicker'
+import type { VishiAdmin, VishiFrequency } from '@/models/vishi'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import React from 'react'
 
 export default function EditVishiPage({ id }: { id: number }) {
@@ -28,10 +30,10 @@ export default function EditVishiPage({ id }: { id: number }) {
 
   const [name,          setName]          = useState('')
   const [amount,        setAmount]        = useState('')
-  const [frequency,     setFrequency]     = useState('')
-  const [drawDay,       setDrawDay]       = useState('')
-  const [collectionDay, setCollectionDay] = useState('')
-  const [releaseDay,    setReleaseDay]    = useState('')
+  const [frequency,     setFrequency]     = useState<VishiFrequency>('monthly')
+  const [drawDate,       setDrawDate]       = useState('')
+  const [collectionDate, setCollectionDate] = useState('')
+  const [releaseDate,    setReleaseDate]    = useState('')
   const [startDate,     setStartDate]     = useState('')
   const [showDelete,    setShowDelete]    = useState(false)
   const [showRestore,   setShowRestore]   = useState(false)
@@ -41,9 +43,9 @@ export default function EditVishiPage({ id }: { id: number }) {
     setName(vishi.name)
     setAmount(vishi.amount)
     setFrequency(vishi.frequency)
-    setDrawDay(String(vishi.draw_day))
-    setCollectionDay(String(vishi.collection_day))
-    setReleaseDay(String(vishi.release_day))
+    setDrawDate(vishi.draw_date ?? vishi.current_draw_date)
+    setCollectionDate(vishi.collection_date ?? vishi.current_collection_date)
+    setReleaseDate(vishi.release_date ?? vishi.current_release_date)
     setStartDate(vishi.start_date)
   }, [vishi])
 
@@ -51,22 +53,33 @@ export default function EditVishiPage({ id }: { id: number }) {
   const isUpcoming = vishi?.status === 'upcoming'
   const isDeleted  = vishi?.is_deleted ?? false
   const scheduleLocked = vishi?.schedule_locked ?? !isUpcoming
-  const dayError = !scheduleLocked && vishi
-    ? getVishiScheduleError(vishi.frequency, Number(drawDay), Number(collectionDay), Number(releaseDay), startDate)
-    : null
+  const changeStartDate = (date: string) => {
+    setStartDate(date)
+    setDrawDate(''); setCollectionDate(''); setReleaseDate('')
+  }
+  const changeFrequency = (value: VishiFrequency) => {
+    setFrequency(value)
+    setDrawDate(''); setCollectionDate(''); setReleaseDate('')
+  }
+  const cycleEnd = getCycleEnd(startDate, frequency)
+  const rangeMax = cycleEnd ? shiftDate(cycleEnd, -1) : ''
+  const eventMax = cycleEnd ? [shiftDate(cycleEnd, -2), ...(releaseDate ? [shiftDate(releaseDate, -1)] : [])].sort()[0] : ''
+  const releaseMin = drawDate && collectionDate ? shiftDate([startDate, drawDate, collectionDate].sort().at(-1)!, 1) : startDate
+  const dateError = !scheduleLocked && startDate && drawDate && collectionDate && releaseDate
+    ? getVishiScheduleError(frequency, drawDate, collectionDate, releaseDate, startDate) : null
   const amountValid = !isNaN(Number(amount)) && Number(amount) > 0
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || isDeleted || (!scheduleLocked && (!amountValid || dayError))) return
+    if (!name.trim() || isDeleted || (!scheduleLocked && (!amountValid || dateError || !startDate || !drawDate || !collectionDate || !releaseDate))) return
     update.mutate(
       scheduleLocked
         ? { name: name.trim() }
         : {
             name: name.trim(), amount: amount.trim(),
             frequency: frequency as VishiAdmin['frequency'],
-            draw_day: Number(drawDay), collection_day: Number(collectionDay),
-            release_day: Number(releaseDay), start_date: startDate,
+            draw_date: drawDate, collection_date: collectionDate,
+            release_date: releaseDate, start_date: startDate,
           },
       { onSuccess: () => router.push(`/admin/vishis/${id}`) }
     )
@@ -161,24 +174,23 @@ export default function EditVishiPage({ id }: { id: number }) {
               <CardContent className="px-5 py-5 space-y-4">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Cycle Settings</p>
                 <div className="space-y-1.5">
-                  <Label>Start Date</Label>
-                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="rounded-xl h-10" />
+                  <Label>Frequency</Label>
+                  <Select value={frequency} onValueChange={value => changeFrequency(value as VishiFrequency)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(['weekly', 'half_monthly', 'monthly', 'halfyear', 'yearly'] as const).map(value => <SelectItem key={value} value={value}>{formatFrequency(value)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'Draw Day',       value: drawDay,       set: setDrawDay       },
-                    { label: 'Collection Day', value: collectionDay, set: setCollectionDay },
-                    { label: 'Release Day',    value: releaseDay,    set: setReleaseDay    },
-                  ].map(({ label, value, set }) => (
-                    <div key={label} className="space-y-1.5">
-                      <Label className="text-xs">{label}</Label>
-                      <Input type="number" inputMode="numeric" min={1} max={vishi.frequency === 'weekly' ? 7 : vishi.frequency === 'half_monthly' ? 14 : 28}
-                        value={value} onChange={(e) => set(e.target.value)} className="rounded-xl h-10" />
-                    </div>
-                  ))}
+                <DatePicker label="Start date" value={startDate} onChange={changeStartDate} />
+                <p className="rounded-xl bg-primary/8 px-3 py-2 text-xs">First cycle: {formatDate(startDate)}–{formatDate(rangeMax)} · Next renewal: {formatDate(cycleEnd)}</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <DatePicker label="Draw date" value={drawDate} onChange={setDrawDate} min={startDate} max={eventMax} disabled={!startDate} />
+                  <DatePicker label="Collection date" value={collectionDate} onChange={setCollectionDate} min={startDate} max={eventMax} disabled={!startDate} />
+                  <DatePicker label="Release date" value={releaseDate} onChange={setReleaseDate} min={releaseMin} max={rangeMax} disabled={!startDate || !drawDate || !collectionDate || releaseMin > rangeMax} />
                 </div>
-                <p className="text-xs text-muted-foreground">Start date must be earliest. Collection can be before or after draw; both must be before release.</p>
-                {dayError && <p role="alert" className="text-xs text-destructive">{dayError}</p>}
+                <p className="text-xs text-muted-foreground">Draw and collection can be in either order; release must be after both within the cycle.</p>
+                {dateError && <p role="alert" className="text-xs text-destructive">{dateError}</p>}
               </CardContent>
             </Card>
           )}
@@ -194,10 +206,10 @@ export default function EditVishiPage({ id }: { id: number }) {
                 <div className="grid grid-cols-2 gap-y-2 text-xs">
                   {[
                     ['Frequency',       formatFrequency(vishi.frequency)],
-                    ['Draw day',        String(vishi.draw_day)],
-                    ['Collection day',  String(vishi.collection_day)],
-                    ['Release day',     String(vishi.release_day)],
-                    ['Start date',      vishi.start_date],
+                    ['Draw date',       formatDate(vishi.current_draw_date)],
+                    ['Collection date', formatDate(vishi.current_collection_date)],
+                    ['Release date',    formatDate(vishi.current_release_date)],
+                    ['Start date',      formatDate(vishi.start_date)],
                   ].map(([label, value]) => (
                     <React.Fragment key={label}>
                       <span className="text-muted-foreground">{label}</span>
@@ -211,7 +223,7 @@ export default function EditVishiPage({ id }: { id: number }) {
 
           {!isDeleted && (
             <Button type="submit" className="w-full h-12 rounded-2xl font-bold text-base"
-              disabled={update.isPending || !name.trim() || (!scheduleLocked && (!amountValid || !!dayError))}>
+              disabled={update.isPending || !name.trim() || (!scheduleLocked && (!amountValid || !!dateError || !startDate || !drawDate || !collectionDate || !releaseDate))}>
               {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
             </Button>
           )}

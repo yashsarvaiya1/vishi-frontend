@@ -10,7 +10,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Button }            from '@/components/ui/button'
 import { Badge }             from '@/components/ui/badge'
-import { cn }                from '@/lib/utils'
+import { cn, formatDate }                from '@/lib/utils'
 import useAuthStore          from '@/stores/authStore'
 import type { AdminDashboard, AlertType, ActionAlert, UpcomingEvent } from '@/models/dashboard'
 
@@ -70,9 +70,7 @@ export default function AdminHome({ data }: Props) {
   const username = useAuthStore((s) => s.username)
   const mobile   = useAuthStore((s) => s.mobile_number)
 
-  const today = new Date().toLocaleDateString('en-IN', {
-    weekday: 'short', day: 'numeric', month: 'short',
-  })
+  const today = formatDate(new Date())
 
   const STAT_CARDS = [
     { label: 'Active',    value: data.active_vishis_count,   icon: TrendingUp, iconCls: 'text-emerald-600', bg: 'from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20' },
@@ -217,7 +215,7 @@ function AlertRow({ alert, onAction }: { alert: ActionAlert; onAction: () => voi
 
 function EventRow({ event, onClick }: { event: UpcomingEvent; onClick: () => void }) {
   const cfg     = EVENT_CFG[event.event_type]
-  const dateStr = new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+  const dateStr = formatDate(event.date)
   return (
     <button type="button"
       className="w-full text-left flex items-center gap-3 px-4 py-4 cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition-colors"

@@ -26,21 +26,18 @@ export function formatCurrency(
   }).format(num)
 }
 
-/**
- * Formats an ISO date string or Date to "15 Jan 2026".
- * Returns "—" for null/undefined/invalid.
- */
-export function formatDate(
-  value: string | Date | null | undefined
-): string {
+/** Format a date as DD/MM/YY; timestamps use the app's India timezone. */
+export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return '—'
-  const d = new Date(value)
-  if (isNaN(d.getTime())) return '—'
-  return new Intl.DateTimeFormat('en-IN', {
-    day:   '2-digit',
-    month: 'short',
-    year:  'numeric',
-  }).format(d)
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-')
+    return `${day}/${month}/${year.slice(-2)}`
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'Asia/Kolkata',
+  }).format(date)
 }
 
 /**

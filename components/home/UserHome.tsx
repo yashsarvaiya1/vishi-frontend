@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge }             from '@/components/ui/badge'
-import { cn }                from '@/lib/utils'
+import { cn, formatDate }                from '@/lib/utils'
 import {
   LedgerStatusBadge, VishiStatusBadge, getVishiDisplayStatus,
 } from '@/components/shared/StatusBadge'
@@ -35,9 +35,7 @@ export default function UserHome({ data }: Props) {
 
   const pendingAmt = parseFloat(data.total_pending_balance ?? '0')
   const hasPending = pendingAmt < 0
-  const today      = new Date().toLocaleDateString('en-IN', {
-    weekday: 'short', day: 'numeric', month: 'short',
-  })
+  const today      = formatDate(new Date())
 
   const activeVishis    = data.my_vishis.filter((v) => v.status !== 'completed')
   const completedVishis = data.my_vishis.filter((v) => v.status === 'completed')

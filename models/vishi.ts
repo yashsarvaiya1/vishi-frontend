@@ -104,6 +104,9 @@ export interface VishiPublic extends VishiBase {
 
 export interface VishiAdmin extends VishiBase {
   schedule_locked?:        boolean
+  draw_date?:              string | null
+  collection_date?:        string | null
+  release_date?:           string | null
   draw_day:               number
   collection_day:         number
   release_day:            number
@@ -125,9 +128,9 @@ export interface CreateVishiPayload {
   name:           string
   amount:         string
   frequency:      VishiFrequency
-  draw_day:       number
-  collection_day: number
-  release_day:    number
+  draw_date:      string
+  collection_date: string
+  release_date:   string
   start_date:     string
 }
 
@@ -136,9 +139,9 @@ export interface UpdateVishiPayload {
   name?:          string
   amount?:        string
   frequency?:     VishiFrequency
-  draw_day?:      number
-  collection_day?: number
-  release_day?:   number
+  draw_date?:     string
+  collection_date?: string
+  release_date?:  string
   start_date?:    string
 }
 
