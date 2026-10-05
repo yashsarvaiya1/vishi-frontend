@@ -14,7 +14,7 @@ export default function PageHeader({
   title, subtitle, children, className, back,
 }: PageHeaderProps) {
   return (
-    <div className={cn('flex items-start justify-between gap-3 mb-5', className)}>
+    <div className={cn('flex items-start justify-between gap-3 mb-6 flex-wrap sm:flex-nowrap', className)}>
       <div className="flex items-start gap-1.5 min-w-0">
         {back !== undefined && (
           <BackButton
@@ -23,11 +23,11 @@ export default function PageHeader({
           />
         )}
         <div className="min-w-0">
-          <h1 className="text-[1.35rem] font-bold tracking-tight leading-tight text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight leading-tight break-words text-foreground">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-sm text-muted-foreground mt-0.5 font-normal">
+            <p className="text-sm text-muted-foreground mt-1.5 font-normal leading-relaxed">
               {subtitle}
             </p>
           )}

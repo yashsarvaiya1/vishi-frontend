@@ -47,11 +47,12 @@ export default function UserHome({ data }: Props) {
     <div className="space-y-6">
 
       {/* Greeting */}
-      <div>
+      <div className="rounded-2xl border bg-card p-5 sm:p-7">
         <p className="text-xs text-muted-foreground font-medium">{today}</p>
-        <h2 className="text-2xl font-black tracking-tight mt-0.5">
-          {getGreeting()}, {username || mobile} 👋
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mt-3">
+          {getGreeting()}, {username || mobile}
         </h2>
+        <p className="text-sm text-muted-foreground mt-2">Your contributions and community, at a glance.</p>
       </div>
 
       {/* Stat cards */}
@@ -140,7 +141,7 @@ export default function UserHome({ data }: Props) {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {displayed.map((vishi) => (
               <VishiSummaryCard
                 key={vishi.vishi_id}
@@ -174,6 +175,8 @@ function VishiSummaryCard({ vishi, onClick }: { vishi: MyVishiGroup; onClick: ()
         isCompleted && 'opacity-80'
       )}
       onClick={onClick}
+      role="link" tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') onClick() }}
     >
       <CardContent className="px-4 pt-4 pb-3 space-y-3">
         <div className="flex items-start justify-between gap-2">

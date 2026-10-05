@@ -58,6 +58,7 @@ export interface DrawRecord {
   participant:      number
   cycle_number:     number
   was_fixed:        boolean
+  hide_fixed:       boolean
   drawn_at:         string
   is_released:      boolean
   released_at:      string | null
@@ -91,6 +92,7 @@ interface VishiBase {
   finish_date:             string
   status:                  VishiStatus
   current_cycle:           number
+  collection_cycle:        number
   total_cycles:            number
 }
 
@@ -149,6 +151,7 @@ export interface UpdateParticipantPayload {
 }
 
 export interface DrawPayload {
+  hide_fixed?: boolean
   fix_participant_id?: number   // optional — omit for random draw
 }
 

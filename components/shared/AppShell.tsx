@@ -12,13 +12,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <ProtectedRoute>
         <div className="min-h-screen flex flex-col bg-background">
           <Header />
-          {/*
-           * pb-bottom-nav = 5rem + safe-area-inset-bottom (from globals.css utility)
-           * ensures content is never hidden behind the bottom nav on notched phones.
-           * max-w-lg keeps content readable on tablets without becoming too wide.
-           */}
-          <main className="flex-1 overflow-y-auto pt-5 pb-bottom-nav px-4">
-            <div className="max-w-lg mx-auto w-full animate-fade-up">
+          <a href="#main-content" className="skip-link">Skip to content</a>
+          <main id="main-content" tabIndex={-1} className="app-main flex-1 min-w-0 outline-none">
+            <div className="mx-auto w-full max-w-6xl animate-fade-up">
               {children}
             </div>
           </main>

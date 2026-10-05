@@ -42,7 +42,7 @@ export default function ProfilePage() {
   )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-3xl mx-auto">
       <PageHeader title="Profile" />
 
       {/* Avatar hero card */}

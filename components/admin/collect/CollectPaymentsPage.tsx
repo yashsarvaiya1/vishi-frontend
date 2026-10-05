@@ -65,6 +65,7 @@ function Combobox({
         <Button
           variant="outline"
           role="combobox"
+          aria-label={placeholder}
           aria-expanded={open}
           disabled={disabled}
           className={cn(
@@ -91,7 +92,7 @@ function Combobox({
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl" align="start">
+      <PopoverContent className="w-(--radix-popover-trigger-width) p-0 rounded-xl" align="start">
         <Command>
           <CommandInput placeholder={searchPlaceholder} className="h-10" />
           <CommandList>
@@ -140,7 +141,7 @@ export default function CollectPaymentsPage() {
   return (
     <AdminRoute>
       <div className="space-y-5">
-        <PageHeader title="Collect Payments" />
+        <PageHeader title="Collect Payments" subtitle="Review outstanding balances and record contributions." />
 
         {isLoading ? (
           <div className="space-y-3">
@@ -173,8 +174,9 @@ export default function CollectPaymentsPage() {
             </div>
 
             {/* Quick Record */}
-            <QuickRecord groups={dueGroups} />
-
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] items-start">
+            <QuickRecord groups={groups} />
+            <div className="space-y-4 min-w-0">
             <div className="flex items-center gap-3">
               <Separator className="flex-1" />
               <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">
@@ -188,7 +190,7 @@ export default function CollectPaymentsPage() {
                 <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
                 <div>
                   <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">All payments collected</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">No outstanding dues across any active vishis.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">No outstanding dues across your vishis.</p>
                 </div>
               </div>
             ) : (
@@ -198,6 +200,8 @@ export default function CollectPaymentsPage() {
                 ))}
               </div>
             )}
+            </div>
+            </div>
           </>
         )}
       </div>

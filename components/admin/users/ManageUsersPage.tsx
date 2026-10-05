@@ -86,6 +86,7 @@ export default function ManageUsersPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            aria-label="Search users by name or mobile number"
             placeholder="Search name or mobile..."
             className="pl-9 rounded-xl"
             value={search}
@@ -98,6 +99,7 @@ export default function ManageUsersPage() {
           {FILTER_TABS.map(({ label, value }) => (
             <button
               key={value}
+              aria-pressed={activeFilter === value}
               onClick={() => setActiveFilter(value)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                 activeFilter === value
@@ -111,7 +113,7 @@ export default function ManageUsersPage() {
         </div>
 
         {/* User list */}
-        <div className="space-y-2.5">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {isLoading ? (
             [...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)
           ) : users.length === 0 ? (
@@ -161,7 +163,8 @@ function UserCard({ user, onClick }: { user: User; onClick: () => void }) {
             </AvatarFallback>
           </Avatar>
 
-          <div className="flex-1 min-w-0 cursor-pointer" onClick={onClick}>
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={onClick} role="link" tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter') onClick() }}>
             <div className="flex items-center gap-1.5 flex-wrap">
               <p className="font-bold text-sm truncate">{user.username || '—'}</p>
               {user.is_superuser && (

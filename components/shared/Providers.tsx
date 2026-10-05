@@ -2,6 +2,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ThemeProvider } from 'next-themes'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Toaster } from '@/components/ui/sonner'
@@ -29,20 +30,22 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      <Toaster
-        position="top-center"
-        richColors
-        closeButton
-        // ← ADDED: better mobile toast sizing
-        toastOptions={{
-          classNames: {
-            toast: 'text-sm font-medium',
-          },
-        }}
-      />
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+      <QueryClientProvider client={queryClient}>
+        {children}
+        <Toaster
+          position="top-center"
+          richColors
+          closeButton
+          // ← ADDED: better mobile toast sizing
+          toastOptions={{
+            classNames: {
+              toast: 'text-sm font-medium',
+            },
+          }}
+        />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </ThemeProvider>
   )
 }

@@ -3,7 +3,7 @@
 
 import Link          from 'next/link'
 import { useRouter } from 'next/navigation'
-import { LogOut, User, ShieldCheck, Wallet, IndianRupee } from 'lucide-react'
+import { LogOut, User, ShieldCheck, Wallet, IndianRupee, Sun, Moon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -14,9 +14,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge }       from '@/components/ui/badge'
 import useAuthStore    from '@/stores/authStore'
 import { getInitials } from '@/lib/utils'
+import { useTheme } from 'next-themes'
 
 export default function Header() {
   const router = useRouter()
+  const { resolvedTheme, setTheme } = useTheme()
   const { username, mobile_number, is_superuser, clearAuth } = useAuthStore()
   const displayName = username || mobile_number || ''
 
@@ -26,24 +28,39 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur-md supports-backdrop-filter:bg-background/70">
-      <div className="max-w-lg mx-auto flex h-14 items-center justify-between px-4">
+    <header className="app-header sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 lg:h-20 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+        <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity lg:hidden">
+          <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
             <span className="text-xs font-black text-primary-foreground tracking-tighter">V</span>
           </div>
           <span className="font-bold text-lg tracking-tight">Vishi</span>
         </Link>
 
+        <div className="hidden lg:block">
+          <p className="text-sm font-semibold">{is_superuser ? 'Your workspace' : 'Your overview'}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Keep every cycle in view.</p>
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <Button variant="ghost" size="icon" className="rounded-xl"
+            aria-label="Toggle color theme"
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
+            <Sun className="h-4.5 w-4.5 dark:hidden" /><Moon className="hidden h-4.5 w-4.5 dark:block" />
+          </Button>
+          <div className="hidden sm:block text-right mr-1">
+            <p className="text-sm font-semibold max-w-40 truncate">{displayName}</p>
+            <p className="text-[11px] text-muted-foreground">{is_superuser ? 'Administrator' : 'Member'}</p>
+          </div>
         {/* Avatar dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="relative h-9 w-9 rounded-full focus-visible:ring-0 hover:bg-muted"
+              aria-label="Open account menu"
+              className="relative h-11 w-11 rounded-full hover:bg-muted"
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
@@ -114,6 +131,7 @@ export default function Header() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
     </header>
   )

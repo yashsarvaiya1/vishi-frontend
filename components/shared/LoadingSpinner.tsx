@@ -18,7 +18,7 @@ export default function LoadingSpinner({
   size = 'md', fullPage = false, label, className,
 }: LoadingSpinnerProps) {
   const spinner = (
-    <div className={cn('flex flex-col items-center gap-3', className)}>
+    <div role="status" aria-live="polite" aria-label={label || 'Loading'} className={cn('flex flex-col items-center gap-3', className)}>
       <div className={cn(
         'rounded-full border-primary/25 border-t-primary animate-spin',
         SIZE[size]

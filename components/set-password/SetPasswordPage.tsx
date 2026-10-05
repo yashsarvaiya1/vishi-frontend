@@ -39,7 +39,7 @@ export default function SetPasswordPage() {
   }
 
   return (
-    <div className="w-full max-w-sm space-y-8">
+    <div className="w-full max-w-md space-y-8">
 
       {/* Logo */}
       <div className="text-center space-y-3">
@@ -47,13 +47,13 @@ export default function SetPasswordPage() {
           <span className="text-2xl font-black text-primary-foreground">V</span>
         </div>
         <div>
-          <h1 className="text-3xl font-black tracking-tight">Vishi</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Vishi</h1>
           <p className="text-sm text-muted-foreground mt-1">Digital chit-fund management</p>
         </div>
       </div>
 
       {/* Card */}
-      <div className="rounded-2xl border bg-card shadow-sm px-6 py-6 space-y-5">
+      <div className="rounded-3xl border border-border/80 bg-card shadow-xl shadow-primary/3 px-6 py-7 sm:px-8 sm:py-8 space-y-5">
         <div className="flex items-start gap-2">
           <button
             type="button"
@@ -138,7 +138,7 @@ export default function SetPasswordPage() {
 
           <Button
             type="submit"
-            className="w-full h-11 rounded-xl font-semibold text-base gap-2"
+            className="w-full h-12 rounded-xl font-semibold text-base gap-2"
             disabled={!canSubmit}
           >
             {isPending

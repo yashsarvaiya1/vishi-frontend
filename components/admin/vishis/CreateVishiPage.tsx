@@ -112,8 +112,8 @@ export default function CreateVishiPage() {
 
   return (
     <AdminRoute>
-      <div className="space-y-5">
-        <PageHeader back title="Create Vishi" />
+      <div className="space-y-5 max-w-3xl mx-auto">
+        <PageHeader back title="Create Vishi" subtitle="Bring your group together, one cycle at a time." />
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -172,7 +172,7 @@ export default function CreateVishiPage() {
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Day Settings</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Draw &lt; Collection &lt; Release. Monthly+: day of month (1–28). Weekly/Half-monthly: offset from start.
+                  Payments start on the start date and renew at the selected frequency. Draw &lt; Collection &lt; Release sets event days. Monthly+: day of month (1–28). Weekly/Half-monthly: offset from start.
                 </p>
               </div>
 

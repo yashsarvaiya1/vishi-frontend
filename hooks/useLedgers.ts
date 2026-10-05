@@ -58,6 +58,9 @@ export function useRecordPayment(vishiId: number, ledgerId: number) {
       qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(vishiId) })
       // Invalidate admin payments summary card
       qc.invalidateQueries({ queryKey: ['payments', 'summary'] })
+      qc.invalidateQueries({ queryKey: ['profile', 'my-vishis'] })
+      qc.invalidateQueries({ queryKey: ['profile', 'my-payments'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
       toast.success('Payment recorded.')
     },
     onError: (err: any) =>

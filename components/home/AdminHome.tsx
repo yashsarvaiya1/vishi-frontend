@@ -5,7 +5,7 @@ import { useRouter }   from 'next/navigation'
 import {
   AlertTriangle, Clock, CreditCard,
   Users, TrendingUp, Wallet, ChevronRight,
-  Zap,
+  Zap, Plus, ArrowUpRight, CheckCircle2, CalendarDays,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button }            from '@/components/ui/button'
@@ -82,23 +82,24 @@ export default function AdminHome({ data }: Props) {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 dashboard-grid">
 
       {/* Greeting */}
-      <div>
-        <p className="text-xs text-muted-foreground font-medium">{today}</p>
-        <h2 className="text-2xl font-black tracking-tight mt-0.5">
-          {getGreeting()}, {username || mobile} 👋
+      <div className="dashboard-wide rounded-2xl border bg-card p-5 sm:p-7">
+        <p className="text-xs text-muted-foreground font-medium flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5" />{today}</p>
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mt-3">
+          {getGreeting()}, {username || mobile}
         </h2>
+        <p className="text-sm text-muted-foreground mt-2">Here is what is happening across your vishis.</p>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="dashboard-wide grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {STAT_CARDS.map(({ label, value, icon: Icon, iconCls, bg }) => (
           <div
             key={label}
             className={cn(
-              'rounded-2xl px-4 py-4 space-y-3 bg-linear-to-br border border-transparent',
+              'rounded-2xl px-4 py-5 sm:px-5 space-y-4 bg-linear-to-br border border-border/50',
               bg
             )}
           >
@@ -137,6 +138,13 @@ export default function AdminHome({ data }: Props) {
         </section>
       )}
 
+      {data.action_required.length === 0 && (
+        <section className="rounded-2xl border bg-card p-6 flex items-start gap-3">
+          <span className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 p-3"><CheckCircle2 className="h-5 w-5 text-emerald-600" /></span>
+          <div><h3 className="text-sm font-semibold">You are all caught up</h3><p className="text-sm text-muted-foreground mt-1 leading-relaxed">No actions need your attention right now.</p></div>
+        </section>
+      )}
+
       {/* Upcoming This Week */}
       {data.upcoming_this_week.length > 0 && (
         <section className="space-y-2.5">
@@ -154,6 +162,27 @@ export default function AdminHome({ data }: Props) {
           </Card>
         </section>
       )}
+
+      {data.upcoming_this_week.length === 0 && (
+        <section className="rounded-2xl border bg-card p-6 flex items-start gap-3">
+          <span className="rounded-xl bg-primary/6 p-3"><CalendarDays className="h-5 w-5 text-primary" /></span>
+          <div><h3 className="text-sm font-semibold">A quiet week ahead</h3><p className="text-sm text-muted-foreground mt-1 leading-relaxed">No scheduled events in the next seven days.</p></div>
+        </section>
+      )}
+      <div className="dashboard-wide grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[
+          { label: 'Create a vishi', detail: 'Start your next group', href: '/admin/vishis/create', icon: Plus },
+          { label: 'Collect payments', detail: 'Review and settle dues', href: '/admin/collect', icon: CreditCard },
+          { label: 'Manage members', detail: 'Keep your community in sync', href: '/admin/users', icon: Users },
+        ].map(({ label, detail, href, icon: Icon }) => (
+          <button key={href} onClick={() => router.push(href)}
+            className="flex items-center gap-3 rounded-2xl border bg-card p-4 text-left hover:border-primary/30 hover:bg-primary/3 transition-colors group">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/7 text-primary"><Icon className="h-4 w-4" /></span>
+            <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{label}</span><span className="block text-xs text-muted-foreground mt-1">{detail}</span></span>
+            <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0" />
+          </button>
+        ))}
+      </div>
 
     </div>
   )
@@ -190,8 +219,8 @@ function EventRow({ event, onClick }: { event: UpcomingEvent; onClick: () => voi
   const cfg     = EVENT_CFG[event.event_type]
   const dateStr = new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
   return (
-    <div
-      className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition-colors"
+    <button type="button"
+      className="w-full text-left flex items-center gap-3 px-4 py-4 cursor-pointer hover:bg-muted/40 active:bg-muted/60 transition-colors"
       onClick={onClick}
     >
       <span className="text-base shrink-0">{cfg.emoji}</span>
@@ -203,6 +232,6 @@ function EventRow({ event, onClick }: { event: UpcomingEvent; onClick: () => voi
         <Badge variant="outline" className="text-xs font-semibold rounded-full">{dateStr}</Badge>
         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
       </div>
-    </div>
+    </button>
   )
 }

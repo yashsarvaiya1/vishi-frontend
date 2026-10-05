@@ -82,7 +82,7 @@ export default function MyVishiDetailPage({ id }: { id: number }) {
         />
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-4xl mx-auto">
         <PageHeader back title={vishi.name} subtitle={formatFrequency(vishi.frequency)} />
 
         {/* Hero banner */}
@@ -129,7 +129,7 @@ export default function MyVishiDetailPage({ id }: { id: number }) {
             <div className="grid grid-cols-2 gap-y-3">
               {[
                 ['Draw',       vishi.current_draw_date],
-                ['Collection', vishi.current_collection_date],
+                ['Renewal',    vishi.current_collection_date],
                 ['Release',    vishi.current_release_date],
                 ['Start',      vishi.start_date],
                 ['Finish',     vishi.finish_date],

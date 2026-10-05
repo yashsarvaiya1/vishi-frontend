@@ -15,12 +15,12 @@ export default function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className={cn(
-      'flex flex-col items-center justify-center text-center py-14 px-6',
+      'flex flex-col items-center justify-center text-center py-14 sm:py-20 px-6 rounded-2xl border border-dashed bg-card/70',
       className
     )}>
       {Icon && (
-        <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
-          <Icon className="h-7 w-7 text-muted-foreground" />
+        <div className="h-14 w-14 rounded-2xl bg-primary/6 flex items-center justify-center mb-4">
+          <Icon className="h-7 w-7 text-primary/60" />
         </div>
       )}
       <h3 className="font-semibold text-base">{title}</h3>

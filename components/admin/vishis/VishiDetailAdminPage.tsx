@@ -62,6 +62,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
   const [drawWinner,             setDrawWinner]             = useState<DrawRecord | null>(null)
   const [showPreDraw,            setShowPreDraw]            = useState(false)
   const [preDrawFixId,           setPreDrawFixId]           = useState<string>('random')
+  const [hideFixedDraw,          setHideFixedDraw]          = useState(false)
   const [showRelease,            setShowRelease]            = useState(false)
   const [showSkipDialog,         setShowSkipDialog]         = useState(false)
   const [skipReason,             setSkipReason]             = useState('')
@@ -102,10 +103,10 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
   })
 
   const handleDraw = () => {
-    const payload: DrawPayload = preDrawFixId !== 'random' ? { fix_participant_id: Number(preDrawFixId) } : {}
+    const payload: DrawPayload = preDrawFixId !== 'random' ? { fix_participant_id: Number(preDrawFixId), hide_fixed: hideFixedDraw } : { hide_fixed: hideFixedDraw }
     draw.mutate(payload, {
       onSuccess: (res) => {
-        setShowPreDraw(false); setPreDrawFixId('random')
+        setShowPreDraw(false); setPreDrawFixId('random'); setHideFixedDraw(false)
         const winner = res?.data as DrawRecord | undefined
         if (winner) { setDrawWinner(winner); setShowDrawAnim(true) }
       },
@@ -118,12 +119,12 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
         <DrawAnimation
           vishiId={vishi.id} cycleNumber={drawWinner.cycle_number}
           winnerName={drawWinner.participant_name} username={drawWinner.username}
-          amount={drawWinner.released_amount ?? String(parseFloat(vishi.amount) * activeParticipants.length)}wasFixed={drawWinner.was_fixed}
+          amount={drawWinner.released_amount ?? String(parseFloat(vishi.amount) * activeParticipants.length)}wasFixed={drawWinner.was_fixed && !drawWinner.hide_fixed}
           onDone={() => { setShowDrawAnim(false); setDrawWinner(null) }}
         />
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-4xl mx-auto">
         <PageHeader back title={vishi.name} subtitle={formatFrequency(vishi.frequency)}>
           <Button variant="outline" size="sm" className="rounded-xl gap-1.5"
             onClick={() => router.push(`/admin/vishis/${id}/edit`)}>
@@ -158,7 +159,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
             <div className="grid grid-cols-3 gap-2 text-center mb-4">
               {[
                 { label: 'Draw',       value: formatDate(vishi.current_draw_date)       },
-                { label: 'Collection', value: formatDate(vishi.current_collection_date) },
+                { label: 'Renewal',    value: formatDate(vishi.current_collection_date) },
                 { label: 'Release',    value: formatDate(vishi.current_release_date)    },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-background/60 rounded-xl py-2.5 px-1">
@@ -308,7 +309,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
                       <CardContent className="px-4 py-2 divide-y">
                         {remainingParticipants.map((p) => (
                           <AdminParticipantRow key={p.id} participant={p} vishiId={id}
-                            vishiStatus={vishi.status} currentCycle={vishi.current_cycle}
+                            vishiStatus={vishi.status} currentCycle={vishi.collection_cycle}
                             isFixDraw={vishi.fix_draw_participant === p.id}
                             onEditSlotName={() => setEditSlotParticipant(p)}
                             onRemove={() => setRemoveParticipantId(p.id)}
@@ -330,7 +331,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
                       <CardContent className="px-4 py-2 divide-y">
                         {winners.map((p) => (
                           <AdminParticipantRow key={p.id} participant={p} vishiId={id}
-                            vishiStatus={vishi.status} currentCycle={vishi.current_cycle}
+                            vishiStatus={vishi.status} currentCycle={vishi.collection_cycle}
                             isFixDraw={false}
                             onEditSlotName={() => setEditSlotParticipant(p)}
                             onRemove={() => setRemoveParticipantId(p.id)}
@@ -352,7 +353,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
                       <CardContent className="px-4 py-2 divide-y">
                         {removedParticipants.map((p) => (
                           <AdminParticipantRow key={p.id} participant={p} vishiId={id}
-                            vishiStatus={vishi.status} currentCycle={vishi.current_cycle}
+                            vishiStatus={vishi.status} currentCycle={vishi.collection_cycle}
                             isFixDraw={false}
                             onEditSlotName={() => {}} onRemove={() => {}}
                             onCollect={() => setCollectParticipant(p)}
@@ -395,7 +396,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
       </div>
 
       {/* Pre-draw Dialog */}
-      <Dialog open={showPreDraw} onOpenChange={(o) => { if (!o) { setShowPreDraw(false); setPreDrawFixId('random') } }}>
+      <Dialog open={showPreDraw} onOpenChange={(o) => { if (!o) { setShowPreDraw(false); setPreDrawFixId('random'); setHideFixedDraw(false) } }}>
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader><DialogTitle>Draw — Cycle {vishi.current_cycle + 1}</DialogTitle></DialogHeader>
           <div className="space-y-4">
@@ -418,7 +419,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Fix Draw <span className="font-normal">(optional)</span></Label>
-              <Select value={preDrawFixId} onValueChange={setPreDrawFixId}>
+              <Select value={preDrawFixId} onValueChange={(value) => { setPreDrawFixId(value); setHideFixedDraw(false) }}>
                 <SelectTrigger className="rounded-xl h-10"><SelectValue placeholder="Random draw (default)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="random">Random draw (default)</SelectItem>
@@ -430,6 +431,19 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
                 </SelectContent>
               </Select>
             </div>
+            {(preDrawFixId !== 'random' || vishi.fix_draw_participant) && (
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                  <input type="checkbox" checked={hideFixedDraw}
+                    onChange={(e) => setHideFixedDraw(e.target.checked)}
+                    className="h-4 w-4 accent-primary" />
+                  Hide fixed draw
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Members see the usual winner reveal without the Fixed label. Admin history keeps the fixed draw record.
+                </p>
+              </div>
+            )}
             {preDrawFixId !== 'random' && (
               <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-xl px-3 py-2.5">
                 <Lock className="h-3.5 w-3.5 shrink-0" />
@@ -438,7 +452,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => { setShowPreDraw(false); setPreDrawFixId('random') }}>Cancel</Button>
+            <Button variant="outline" className="rounded-xl" onClick={() => { setShowPreDraw(false); setPreDrawFixId('random'); setHideFixedDraw(false) }}>Cancel</Button>
             <Button className="rounded-xl" disabled={draw.isPending || remainingParticipants.length === 0} onClick={handleDraw}>
               {draw.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Shuffle className="h-4 w-4 mr-1.5" />Draw Now</>}
             </Button>
@@ -479,9 +493,9 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader><DialogTitle>Skip This Cycle?</DialogTitle></DialogHeader>
           <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 px-4 py-3 space-y-2">
-            <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">All dates shift forward</p>
+            <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">Draw and release dates shift forward</p>
             <div className="grid grid-cols-2 gap-y-1.5 text-xs">
-              {[['Draw', vishi.current_draw_date], ['Collection', vishi.current_collection_date],
+              {[['Draw', vishi.current_draw_date],
                 ['Release', vishi.current_release_date], ['Finish', vishi.finish_date]].map(([l, v]) => (
                 <><span key={l+'l'} className="text-muted-foreground">{l}</span>
                 <span key={l+'v'} className="font-semibold">{formatDate(v)}</span></>
@@ -524,7 +538,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
       )}
       {chargeWaiveParticipant && (
         <ChargeWaiveDialog vishiId={id} participant={chargeWaiveParticipant}
-          currentCycle={vishi.current_cycle} onClose={() => setChargeWaiveParticipant(null)} />
+          currentCycle={vishi.collection_cycle} onClose={() => setChargeWaiveParticipant(null)} />
       )}
     </AdminRoute>
   )
@@ -706,7 +720,7 @@ function DrawHistoryRow({ record, onRelease }: { record: DrawRecord; onRelease: 
           <p className="text-sm font-bold">Cycle {record.cycle_number}</p>
           {record.was_fixed && (
             <Badge variant="outline" className="border-0 text-[10px] px-1.5 h-4 rounded-full bg-amber-100 text-amber-700 gap-0.5">
-              <Lock className="h-2.5 w-2.5" />Fixed
+              <Lock className="h-2.5 w-2.5" />{record.hide_fixed ? 'Fixed · Hidden' : 'Fixed'}
             </Badge>
           )}
         </div>
@@ -841,7 +855,7 @@ function AddParticipantDialog({ open, onClose, vishiId, isActive, existingPartic
         <DialogHeader><DialogTitle>Add Participant</DialogTitle></DialogHeader>
         {isActive && (
           <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 px-3 py-2.5 text-xs text-amber-700">
-            ⚠ Adding to an active vishi — charged from the next draw.
+            Payments start from the vishi start date. Joining now charges the current payment period.
           </div>
         )}
         <div className="space-y-3">

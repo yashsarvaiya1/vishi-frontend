@@ -92,7 +92,7 @@ export default function UserDetailPage({ id }: { id: number }) {
 
   return (
     <AdminRoute>
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-3xl mx-auto">
         <PageHeader back title="User Detail" />
 
         {/* Profile hero card */}

@@ -70,6 +70,7 @@ export default function ManageVishisPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            aria-label="Search vishis"
             placeholder={showDeleted ? 'Search deleted vishis...' : 'Search vishis...'}
             className="pl-9 rounded-xl h-10"
             value={search}
@@ -83,6 +84,7 @@ export default function ManageVishisPage() {
             {STATUS_TABS.map((tab) => (
               <button
                 key={tab.value}
+                aria-pressed={statusFilter === tab.value}
                 onClick={() => setStatusFilter(tab.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                   statusFilter === tab.value
@@ -108,7 +110,7 @@ export default function ManageVishisPage() {
         </button>
 
         {/* List */}
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {isLoading ? (
             [...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)
           ) : vishis.length === 0 ? (
@@ -176,6 +178,9 @@ function VishiCard({ vishi, isDeleted, onClick }: {
             : 'cursor-pointer hover:shadow-md hover:border-primary/30 active:scale-[0.99] group'
         )}
         onClick={onClick}
+        role={isDeleted ? undefined : 'link'}
+        tabIndex={isDeleted ? undefined : 0}
+        onKeyDown={(e) => { if (!isDeleted && e.key === 'Enter') onClick() }}
       >
         <CardContent className="px-4 pt-4 pb-3 space-y-3">
           {/* Header */}

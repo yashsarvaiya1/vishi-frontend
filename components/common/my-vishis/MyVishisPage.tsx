@@ -86,7 +86,7 @@ export default function MyVishisPage() {
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {isLoading ? (
           [...Array(3)].map((_, i) => (
             <Skeleton key={i} className="h-36 rounded-2xl" />
@@ -134,6 +134,8 @@ function VishiGroupCard({ vishi, onClick }: { vishi: MyVishiGroup; onClick: () =
         isCompleted && 'opacity-80'
       )}
       onClick={onClick}
+      role="link" tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') onClick() }}
     >
       <CardContent className="px-4 pt-4 pb-3 space-y-3">
 

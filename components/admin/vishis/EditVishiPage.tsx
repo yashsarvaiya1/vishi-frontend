@@ -72,7 +72,7 @@ export default function EditVishiPage({ id }: { id: number }) {
 
   return (
     <AdminRoute>
-      <div className="space-y-5">
+      <div className="space-y-5 max-w-3xl mx-auto">
         <PageHeader back title="Edit Vishi" subtitle={vishi.name}>
           {isDeleted ? (
             <Button

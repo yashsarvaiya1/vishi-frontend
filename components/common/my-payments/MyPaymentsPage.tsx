@@ -75,7 +75,7 @@ export default function MyPaymentsPage() {
           description="You are not part of any vishi. Contact admin to be added."
         />
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 items-start">
           {vishiGroups.map((group) => (
             <VishiPaymentSection key={group.vishi_id} group={group} />
           ))}
