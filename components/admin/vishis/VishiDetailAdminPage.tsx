@@ -65,6 +65,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
   const [showPreDraw,            setShowPreDraw]            = useState(false)
   const [preDrawFixId,           setPreDrawFixId]           = useState<string>('random')
   const [hideFixedDraw,          setHideFixedDraw]          = useState(false)
+  const [forceDraw,              setForceDraw]              = useState(false)
   const [showRelease,            setShowRelease]            = useState(false)
   const [showSkipDialog,         setShowSkipDialog]         = useState(false)
   const [skipReason,             setSkipReason]             = useState('')
@@ -98,7 +99,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
     && today >= drawDate
     && !vishi.draw_records.find((r) => r.cycle_number === vishi.current_cycle + 1)
 
-  const releasePending = vishi.status === 'active' && !!latestDraw && !latestDraw.is_released
+  const releasePending = !!latestDraw && !latestDraw.is_released
 
   const displayStatus = getVishiDisplayStatus(vishi.status, {
     draw_overdue: drawOverdue, release_pending: releasePending,
@@ -106,9 +107,10 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
 
   const handleDraw = () => {
     const payload: DrawPayload = preDrawFixId !== 'random' ? { fix_participant_id: Number(preDrawFixId), hide_fixed: hideFixedDraw } : { hide_fixed: hideFixedDraw }
+    payload.force = forceDraw
     draw.mutate(payload, {
       onSuccess: (res) => {
-        setShowPreDraw(false); setPreDrawFixId('random'); setHideFixedDraw(false)
+        setShowPreDraw(false); setPreDrawFixId('random'); setHideFixedDraw(false); setForceDraw(false)
         const winner = res?.data as DrawRecord | undefined
         if (winner) { setDrawWinner(winner); setShowDrawAnim(true) }
       },
@@ -212,7 +214,7 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
               <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Draw Overdue</p>
               <p className="text-xs text-muted-foreground">Was due {formatDate(vishi.current_draw_date)}</p>
             </div>
-            <Button size="sm" className="rounded-xl shrink-0 bg-amber-500 hover:bg-amber-600 text-white" onClick={() => setShowPreDraw(true)}>
+            <Button size="sm" className="rounded-xl shrink-0 bg-amber-500 hover:bg-amber-600 text-white" disabled={releasePending || remainingParticipants.length === 0} onClick={() => setShowPreDraw(true)}>
               Draw Now
             </Button>
           </div>
@@ -247,11 +249,16 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
         )}
 
         {/* Action buttons */}
-        {vishi.status === 'active' && (
+        {(vishi.status === 'active' || vishi.status === 'upcoming') && (
           <div className="flex gap-2 flex-wrap">
-            {!drawOverdue && remainingParticipants.length > 0 && (
-              <Button variant="outline" size="sm" className="gap-1.5 rounded-xl" onClick={() => setShowPreDraw(true)}>
+            {vishi.status === 'active' && !drawOverdue && remainingParticipants.length > 0 && (
+              <Button variant="outline" size="sm" className="gap-1.5 rounded-xl" disabled={releasePending} onClick={() => setShowPreDraw(true)}>
                 <Shuffle className="h-3.5 w-3.5" /> Draw
+              </Button>
+            )}
+            {remainingParticipants.length > 0 && (
+              <Button variant="outline" size="sm" className="gap-1.5 rounded-xl text-amber-600" disabled={releasePending} onClick={() => { setForceDraw(true); setShowPreDraw(true) }}>
+                <Shuffle className="h-3.5 w-3.5" /> Force Draw
               </Button>
             )}
             {latestDraw && !latestDraw.is_released && (
@@ -259,11 +266,11 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
                 <Banknote className="h-3.5 w-3.5" /> Release
               </Button>
             )}
-            <Button variant="outline" size="sm"
+            {vishi.status === 'active' && <Button variant="outline" size="sm"
               className="gap-1.5 rounded-xl text-amber-600 hover:text-amber-600 hover:bg-amber-50"
               onClick={() => setShowSkipDialog(true)}>
               <SkipForward className="h-3.5 w-3.5" /> Skip Cycle
-            </Button>
+            </Button>}
           </div>
         )}
 
@@ -398,10 +405,17 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
       </div>
 
       {/* Pre-draw Dialog */}
-      <Dialog open={showPreDraw} onOpenChange={(o) => { if (!o) { setShowPreDraw(false); setPreDrawFixId('random'); setHideFixedDraw(false) } }}>
+      <Dialog open={showPreDraw} onOpenChange={(o) => { if (!o) { setShowPreDraw(false); setPreDrawFixId('random'); setHideFixedDraw(false); setForceDraw(false) } }}>
         <DialogContent className="max-w-sm rounded-2xl">
-          <DialogHeader><DialogTitle>Draw — Cycle {vishi.current_cycle + 1}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{forceDraw ? 'Force Draw' : 'Draw'} — Cycle {vishi.current_cycle + 1}</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                <input type="checkbox" checked={forceDraw} onChange={event => setForceDraw(event.target.checked)} className="h-4 w-4 accent-primary" />
+                Force draw before the scheduled date
+              </label>
+              {forceDraw && <p className="text-xs text-muted-foreground">Cycle {vishi.current_cycle + 1} payments become due immediately for all active participants. Existing payments and advance credit still apply. You can release the winner’s amount before collecting every payment.</p>}
+            </div>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
                 Pool ({remainingParticipants.length})
@@ -454,9 +468,9 @@ export default function VishiDetailAdminPage({ id }: { id: number }) {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" className="rounded-xl" onClick={() => { setShowPreDraw(false); setPreDrawFixId('random'); setHideFixedDraw(false) }}>Cancel</Button>
-            <Button className="rounded-xl" disabled={draw.isPending || remainingParticipants.length === 0} onClick={handleDraw}>
-              {draw.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Shuffle className="h-4 w-4 mr-1.5" />Draw Now</>}
+            <Button variant="outline" className="rounded-xl" onClick={() => { setShowPreDraw(false); setPreDrawFixId('random'); setHideFixedDraw(false); setForceDraw(false) }}>Cancel</Button>
+            <Button className="rounded-xl" disabled={draw.isPending || releasePending || remainingParticipants.length === 0 || (!forceDraw && (vishi.status !== 'active' || today < drawDate))} onClick={handleDraw}>
+              {draw.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Shuffle className="h-4 w-4 mr-1.5" />{forceDraw ? 'Confirm Force Draw' : 'Draw Now'}</>}
             </Button>
           </DialogFooter>
         </DialogContent>

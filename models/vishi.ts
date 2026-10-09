@@ -156,6 +156,7 @@ export interface UpdateParticipantPayload {
 }
 
 export interface DrawPayload {
+  force?: boolean
   hide_fixed?: boolean
   fix_participant_id?: number   // optional — omit for random draw
 }
@@ -184,4 +185,3 @@ export interface ParticipantsQueryParams {
   is_drawn?:  boolean
   search?:    string
 }
-
