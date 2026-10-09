@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Trophy, Sparkles }             from 'lucide-react'
 import { Button }                       from '@/components/ui/button'
 import { cn }                           from '@/lib/utils'
@@ -41,6 +42,13 @@ export default function DrawAnimation({
   const [stage,   setStage]   = useState<0 | 1 | 2>(0)
   const [visible, setVisible] = useState(true)
   const spinRef               = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const revealRef             = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = overflow }
+  }, [])
 
   useEffect(() => {
     if (hasSeenDraw(vishiId, cycleNumber)) {
@@ -49,9 +57,12 @@ export default function DrawAnimation({
     }
     spinRef.current = setTimeout(() => {
       setStage(1)
-      setTimeout(() => setStage(2), REVEAL_DELAY + 400)
+      revealRef.current = setTimeout(() => setStage(2), REVEAL_DELAY + 400)
     }, SPIN_DURATION)
-    return () => { if (spinRef.current) clearTimeout(spinRef.current) }
+    return () => {
+      if (spinRef.current) clearTimeout(spinRef.current)
+      if (revealRef.current) clearTimeout(revealRef.current)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -61,11 +72,11 @@ export default function DrawAnimation({
     setTimeout(onDone, 300)
   }
 
-  if (!visible) return null
+  if (!visible || typeof document === 'undefined') return null
 
-  return (
-    <div className={cn(
-      'fixed inset-0 z-100 flex flex-col items-center justify-center',
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Draw winner" className={cn(
+      'fixed inset-0 z-100 overflow-y-auto overscroll-contain',
       'bg-background/97 backdrop-blur-lg',
       'transition-opacity duration-300',
       !visible && 'opacity-0'
@@ -93,9 +104,10 @@ export default function DrawAnimation({
         </div>
       )}
 
+      <div className="relative flex min-h-full flex-col items-center justify-center px-4 py-6">
       {/* Spinner stage */}
       {stage === 0 && (
-        <div className="flex flex-col items-center gap-8 select-none px-8">
+        <div className="flex w-full max-w-xs flex-col items-center gap-8 select-none px-4">
           <div className="space-y-2 text-center">
             <p className="text-2xl font-bold">🎰</p>
             <p className="text-sm font-medium text-muted-foreground animate-pulse">
@@ -103,7 +115,7 @@ export default function DrawAnimation({
             </p>
           </div>
 
-          <div className="h-20 w-64 overflow-hidden rounded-2xl border-2 bg-muted/30 flex items-center justify-center shadow-inner">
+          <div className="h-20 w-full max-w-64 overflow-hidden rounded-2xl border-2 bg-muted/30 flex items-center justify-center shadow-inner">
             <div className="animate-slot-spin text-3xl font-black text-foreground leading-none select-none">
               ？
             </div>
@@ -136,11 +148,11 @@ export default function DrawAnimation({
             <span className="absolute -top-1 -right-1 text-lg">🎉</span>
           </div>
 
-          <div className="text-center space-y-1.5">
+          <div className="text-center space-y-1.5 w-full">
             <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               {wasFixed ? '🔒 Fixed Draw · Cycle Winner' : 'Cycle Winner'}
             </p>
-            <h2 className="text-4xl font-black tracking-tight leading-none">
+            <h2 className="text-4xl font-black tracking-tight leading-none break-words max-w-full">
               {winnerName}
             </h2>
             <p className="text-sm text-muted-foreground font-medium">{username}</p>
@@ -169,6 +181,8 @@ export default function DrawAnimation({
           )}
         </div>
       )}
-    </div>
+      </div>
+    </div>,
+    document.body
   )
 }
