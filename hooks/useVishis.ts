@@ -114,7 +114,11 @@ export function useDrawVishi(id: number) {
   return useMutation({
     mutationFn: (payload?: DrawPayload) => vishiService.draw(id, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: VISHI_KEYS.detail(id) })
+      qc.invalidateQueries({ queryKey: VISHI_KEYS.all })
+      qc.invalidateQueries({ queryKey: ['ledgers', id] })
+      qc.invalidateQueries({ queryKey: ['payments', 'summary'] })
+      qc.invalidateQueries({ queryKey: ['profile', 'my-vishis'] })
+      qc.invalidateQueries({ queryKey: ['profile', 'my-payments'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
     // ← FIXED: richer error — backend returns "Draw date is 2025-06-01. Cannot draw before that date."
@@ -188,4 +192,3 @@ export function useRestoreVishi(id: number) {
       toast.error(err?.response?.data?.detail ?? 'Failed to restore vishi.'),
   })
 }
-
